@@ -158,23 +158,43 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print('Using {} for inference.'.format(device))
 
 def _load(checkpoint_path):
-	if device == 'cuda':
-		checkpoint = torch.load(checkpoint_path, weights_only=False)
-	else:
-		checkpoint = torch.load(checkpoint_path,
-								map_location=lambda storage, loc: storage,
-								weights_only=False)
-	return checkpoint
+	try:
+		# First try to load as TorchScript model
+		if device == 'cuda':
+			checkpoint = torch.jit.load(checkpoint_path, map_location='cuda')
+		else:
+			checkpoint = torch.jit.load(checkpoint_path, map_location='cpu')
+		print("Loaded as TorchScript model")
+		return checkpoint
+	except Exception as e:
+		# If TorchScript loading fails, try regular PyTorch loading
+		print(f"TorchScript loading failed: {e}, trying regular PyTorch loading")
+		if device == 'cuda':
+			checkpoint = torch.load(checkpoint_path, weights_only=False)
+		else:
+			checkpoint = torch.load(checkpoint_path,
+									map_location=lambda storage, loc: storage,
+									weights_only=False)
+		return checkpoint
 
 def load_model(path):
-	model = Wav2Lip()
 	print("Load checkpoint from: {}".format(path))
 	checkpoint = _load(path)
-	s = checkpoint["state_dict"]
-	new_s = {}
-	for k, v in s.items():
-		new_s[k.replace('module.', '')] = v
-	model.load_state_dict(new_s)
+
+	# Check if this is a TorchScript model or regular PyTorch checkpoint
+	if isinstance(checkpoint, torch.jit._script.RecursiveScriptModule):
+		# This is a TorchScript compiled model, use it directly
+		model = checkpoint
+		print("Loaded TorchScript model")
+	else:
+		# This is a regular PyTorch checkpoint with state_dict
+		model = Wav2Lip()
+		s = checkpoint["state_dict"]
+		new_s = {}
+		for k, v in s.items():
+			new_s[k.replace('module.', '')] = v
+		model.load_state_dict(new_s)
+		print("Loaded PyTorch state_dict")
 
 	model = model.to(device)
 	return model.eval()
