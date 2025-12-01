@@ -1,0 +1,22 @@
+# FastAPI and web server dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+aiofiles>=23.2.1
+httpx>=0.25.0
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+
+# Wav2Lip dependencies
+# Note: These versions may need adjustment based on your system
+# Original Wav2Lip uses older versions, but we use more recent compatible ones
+librosa>=0.10.0
+numpy>=1.21.0
+opencv-python>=4.8.0
+opencv-contrib-python>=4.8.0
+torch>=1.13.0
+torchvision>=0.14.0
+tqdm>=4.65.0
+numba>=0.57.0
+scipy>=1.9.0
+
