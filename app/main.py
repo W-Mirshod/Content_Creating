@@ -1,5 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import traceback
 
@@ -14,7 +15,7 @@ from app.utils.file_manager import (
     cleanup_file,
     ensure_wav2lip_temp_dir
 )
-from app.config import AISHA_AI_API_KEY, WAV2LIP_CHECKPOINT
+from app.config import AISHA_AI_API_KEY, WAV2LIP_CHECKPOINT, BASE_DIR
 
 app = FastAPI(
     title="Uzbek TTS Wav2Lip API",
@@ -22,25 +23,41 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Mount static files directory
+static_dir = BASE_DIR / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
-@app.get("/", response_model=HealthResponse)
-async def root():
+
+@app.get("/", response_class=HTMLResponse)
+async def dashboard():
+    """Serve the dashboard HTML page"""
+    dashboard_path = BASE_DIR / "static" / "index.html"
+    if dashboard_path.exists():
+        with open(dashboard_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    else:
+        return HTMLResponse(
+            content="<h1>Dashboard not found</h1><p>Please ensure static/index.html exists.</p>",
+            status_code=404
+        )
+
+
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
     """Health check endpoint"""
     wav2lip_valid, wav2lip_error = validate_wav2lip_setup()
-    checkpoint_exists = Path(WAV2LIP_CHECKPOINT).exists() if wav2lip_valid else False
+    checkpoint_path = Path(WAV2LIP_CHECKPOINT)
+    checkpoint_exists = checkpoint_path.exists()
     
     return HealthResponse(
         status="ok",
         wav2lip_available=wav2lip_valid,
         checkpoint_exists=checkpoint_exists,
-        aisha_ai_configured=bool(AISHA_AI_API_KEY)
+        aisha_ai_configured=bool(AISHA_AI_API_KEY and AISHA_AI_API_KEY.strip() and AISHA_AI_API_KEY != "your_aisha_ai_api_key_here"),
+        wav2lip_error=wav2lip_error,
+        checkpoint_path=str(checkpoint_path)
     )
-
-
-@app.get("/health", response_model=HealthResponse)
-async def health_check():
-    """Detailed health check endpoint"""
-    return await root()
 
 
 @app.post("/process-video", response_model=VideoProcessResponse)

@@ -26,6 +26,9 @@ COPY Wav2Lip-master/ ./Wav2Lip-master/
 # Copy application code
 COPY app/ ./app/
 
+# Copy static files (dashboard)
+COPY static/ ./static/
+
 # Create necessary directories
 RUN mkdir -p uploads outputs Wav2Lip-master/temp Wav2Lip-master/checkpoints
 

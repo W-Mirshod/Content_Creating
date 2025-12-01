@@ -145,22 +145,19 @@ def validate_wav2lip_setup() -> Tuple[bool, Optional[str]]:
     if not WAV2LIP_INFERENCE_SCRIPT.exists():
         errors.append(f"Inference script not found: {WAV2LIP_INFERENCE_SCRIPT}")
     
-    checkpoint = Path(WAV2LIP_CHECKPOINT)
-    if not checkpoint.exists():
-        errors.append(
-            f"Checkpoint not found: {checkpoint}. "
-            f"Please download wav2lip_gan.pth and place it in the checkpoints directory."
-        )
-    
     # Check if ffmpeg is available (required by Wav2Lip)
     try:
         subprocess.run(
             ['ffmpeg', '-version'],
             capture_output=True,
-            check=True
+            check=True,
+            timeout=5
         )
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         errors.append("ffmpeg not found. Please install ffmpeg: sudo apt-get install ffmpeg")
+    
+    # Note: We don't check checkpoint here as it's checked separately in health endpoint
+    # This allows the service to be "available" even if checkpoint is missing
     
     if errors:
         return False, "; ".join(errors)

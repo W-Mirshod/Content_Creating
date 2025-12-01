@@ -32,4 +32,6 @@ class HealthResponse(BaseModel):
     wav2lip_available: bool
     checkpoint_exists: bool
     aisha_ai_configured: bool
+    wav2lip_error: Optional[str] = None
+    checkpoint_path: Optional[str] = None
 

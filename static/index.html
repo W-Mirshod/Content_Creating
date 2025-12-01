@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uzbek TTS Wav2Lip - Video Lip Sync</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .form-group input[type="file"],
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input[type="file"]:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-input-label:hover {
+            background: #f0f2ff;
+            border-color: #764ba2;
+        }
+
+        .file-input-label.has-file {
+            background: #e8f5e9;
+            border-color: #4caf50;
+        }
+
+        .file-input-label span {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .file-name {
+            margin-top: 10px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .progress-container {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .status-message {
+            text-align: center;
+            color: #666;
+            font-size: 1em;
+        }
+
+        .result-container {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: #e8f5e9;
+            border-radius: 10px;
+            border: 2px solid #4caf50;
+        }
+
+        .result-container.active {
+            display: block;
+        }
+
+        .result-container h3 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+        }
+
+        .result-video {
+            width: 100%;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .download-btn {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 30px;
+            background: #4caf50;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .download-btn:hover {
+            background: #45a049;
+        }
+
+        .error-container {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: #ffebee;
+            border-radius: 10px;
+            border: 2px solid #f44336;
+        }
+
+        .error-container.active {
+            display: block;
+        }
+
+        .error-container h3 {
+            color: #c62828;
+            margin-bottom: 10px;
+        }
+
+        .error-message {
+            color: #d32f2f;
+        }
+
+        .info-box {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 10px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .info-box p {
+            color: #1565c0;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Uzbek TTS Wav2Lip</h1>
+            <p>Generate lip-synced videos from Uzbek text</p>
+        </div>
+
+        <div class="content">
+            <form id="uploadForm">
+                <div class="form-group">
+                    <label for="videoFile">Upload Video File</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="videoFile" name="video" accept="video/*" required>
+                        <label for="videoFile" class="file-input-label" id="fileLabel">
+                            <span>📁 Click to select video file (MP4, AVI, MOV, MKV)</span>
+                        </label>
+                    </div>
+                    <div class="file-name" id="fileName"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="uzbekText">Uzbek Text for Speech</label>
+                    <textarea 
+                        id="uzbekText" 
+                        name="text" 
+                        placeholder="Enter Uzbek text here... (e.g., Salom, bu sinov matni)"
+                        required
+                        minlength="1"
+                        maxlength="5000"
+                    ></textarea>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    🚀 Process Video
+                </button>
+            </form>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill">0%</div>
+                </div>
+                <div class="status-message" id="statusMessage">Preparing...</div>
+            </div>
+
+            <div class="result-container" id="resultContainer">
+                <h3>✅ Processing Complete!</h3>
+                <p>Your lip-synced video is ready:</p>
+                <video class="result-video" id="resultVideo" controls></video>
+                <a href="#" class="download-btn" id="downloadBtn" download>📥 Download Video</a>
+            </div>
+
+            <div class="error-container" id="errorContainer">
+                <h3>❌ Error</h3>
+                <div class="error-message" id="errorMessage"></div>
+            </div>
+
+            <div class="info-box">
+                <p><strong>ℹ️ Instructions:</strong></p>
+                <p>1. Upload a video file containing a face</p>
+                <p>2. Enter Uzbek text that you want to lip-sync</p>
+                <p>3. Click "Process Video" and wait for processing</p>
+                <p>4. Download your lip-synced video when ready</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const videoFileInput = document.getElementById('videoFile');
+        const fileLabel = document.getElementById('fileLabel');
+        const fileName = document.getElementById('fileName');
+        const submitBtn = document.getElementById('submitBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const statusMessage = document.getElementById('statusMessage');
+        const resultContainer = document.getElementById('resultContainer');
+        const resultVideo = document.getElementById('resultVideo');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const errorContainer = document.getElementById('errorContainer');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // Handle file selection
+        videoFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                fileLabel.classList.add('has-file');
+                fileLabel.innerHTML = `<span>✓ ${file.name}</span>`;
+                fileName.textContent = `File: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            }
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Hide previous results/errors
+            resultContainer.classList.remove('active');
+            errorContainer.classList.remove('active');
+            progressContainer.classList.add('active');
+
+            // Disable submit button
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Processing...';
+
+            const formData = new FormData(form);
+            const text = formData.get('text').trim();
+
+            if (!text) {
+                showError('Please enter Uzbek text');
+                return;
+            }
+
+            // Simulate progress (since we can't track actual progress easily)
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 5;
+                if (progress <= 90) {
+                    updateProgress(progress, 'Processing video...');
+                }
+            }, 1000);
+
+            try {
+                updateProgress(10, 'Uploading video...');
+                
+                const response = await fetch('/process-video', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                clearInterval(progressInterval);
+
+                if (!response.ok) {
+                    const errorData = await response.text();
+                    throw new Error(errorData || `Server error: ${response.status}`);
+                }
+
+                updateProgress(95, 'Finalizing...');
+
+                // Get the video blob
+                const blob = await response.blob();
+                const videoUrl = URL.createObjectURL(blob);
+
+                // Get filename from Content-Disposition header or use default
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = 'lip_synced_video.mp4';
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
+                    if (filenameMatch) {
+                        filename = filenameMatch[1];
+                    }
+                }
+
+                // Display result
+                updateProgress(100, 'Complete!');
+                setTimeout(() => {
+                    resultVideo.src = videoUrl;
+                    downloadBtn.href = videoUrl;
+                    downloadBtn.download = filename;
+                    progressContainer.classList.remove('active');
+                    resultContainer.classList.add('active');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '🚀 Process Video';
+                }, 500);
+
+            } catch (error) {
+                clearInterval(progressInterval);
+                showError(error.message || 'An error occurred while processing the video');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 Process Video';
+            }
+        });
+
+        function updateProgress(percent, message) {
+            progressFill.style.width = percent + '%';
+            progressFill.textContent = percent + '%';
+            statusMessage.textContent = message;
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorContainer.classList.add('active');
+            progressContainer.classList.remove('active');
+        }
+    </script>
+</body>
+</html>
+
