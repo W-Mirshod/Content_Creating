@@ -36,19 +36,14 @@ brew install docker docker-compose
 
 #### 2. Configure Environment Variables
 
-Create a `.env` file in the project root:
+Edit `docker-compose.yml` (or `docker-compose.gpu.yml` for GPU) and update the `AISHA_AI_API_KEY` value:
 
-```bash
-cp .env.example .env
+```yaml
+environment:
+  - AISHA_AI_API_KEY=your_actual_api_key_here  # Replace with your real API key
 ```
 
-Edit `.env` and add your Aisha AI API credentials:
-
-```env
-AISHA_AI_API_KEY=your_aisha_ai_api_key_here
-AISHA_AI_API_URL=https://api.aisha.ai/v1/tts
-AISHA_AI_VOICE_ID=uzbek
-```
+All other configuration values are set with sensible defaults and can be adjusted in the docker-compose file if needed.
 
 #### 3. Download Wav2Lip Checkpoint
 
@@ -185,21 +180,14 @@ The checkpoint file can be downloaded from:
 
 #### 6. Configure Environment Variables
 
-Create a `.env` file in the project root:
+Edit `docker-compose.yml` (or `docker-compose.gpu.yml` for GPU) and update the `AISHA_AI_API_KEY` value:
 
-```bash
-cp .env.example .env
+```yaml
+environment:
+  - AISHA_AI_API_KEY=your_actual_api_key_here  # Replace with your real API key
 ```
 
-Edit `.env` and add your Aisha AI API credentials:
-
-```env
-AISHA_AI_API_KEY=your_aisha_ai_api_key_here
-AISHA_AI_API_URL=https://api.aisha.ai/v1/tts
-AISHA_AI_VOICE_ID=uzbek
-
-WAV2LIP_CHECKPOINT_PATH=Wav2Lip-master/checkpoints/wav2lip_gan.pth
-```
+All other configuration values are set with sensible defaults and can be adjusted in the docker-compose file if needed.
 
 ## Usage
 
@@ -395,7 +383,10 @@ Content_Creating/
 ├── uploads/                  # Temporary uploads
 ├── outputs/                  # Processed videos
 ├── requirements.txt
-├── .env                      # Environment variables
+├── docker-compose.yml        # Docker Compose configuration (CPU)
+├── docker-compose.gpu.yml    # Docker Compose configuration (GPU)
+├── Dockerfile                # Docker image definition (CPU)
+├── Dockerfile.gpu            # Docker image definition (GPU)
 └── README.md
 ```
 
