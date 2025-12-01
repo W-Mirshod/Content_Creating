@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: uzbek-tts-wav2lip-api
     ports:
-      - "8000:8000"
+      - "6070:6070"
     volumes:
       # Mount Wav2Lip checkpoints (if downloaded locally)
       - ./Wav2Lip-master/checkpoints:/app/Wav2Lip-master/checkpoints
@@ -42,7 +42,7 @@ services:
     #           capabilities: [gpu]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:6070/health"]
       interval: 30s
       timeout: 10s
       retries: 3
