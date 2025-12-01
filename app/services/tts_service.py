@@ -21,6 +21,8 @@ async def generate_audio(text: str, output_path: Path) -> Path:
     """
     Generate audio from Uzbek text using Aisha AI TTS service.
     
+    Based on official API documentation: https://aisha.group/en/api-documentation
+    
     Args:
         text: Uzbek text to convert to speech
         output_path: Path where the audio file will be saved (should be .wav)
@@ -34,6 +36,9 @@ async def generate_audio(text: str, output_path: Path) -> Path:
     if not AISHA_AI_API_KEY:
         raise TTSServiceError("Aisha AI API key is not configured")
     
+    if not AISHA_AI_API_URL:
+        raise TTSServiceError("Aisha AI API URL is not configured")
+    
     # Ensure output directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
@@ -42,115 +47,127 @@ async def generate_audio(text: str, output_path: Path) -> Path:
         output_path = output_path.with_suffix('.wav')
     
     try:
-        # Call Aisha AI TTS API
-        # Note: API structure may vary - adjust based on actual Aisha AI API documentation
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            # Common TTS API patterns - adjust based on actual API
-            payload = {
-                "text": text,
-                "voice_id": AISHA_AI_VOICE_ID,
-                "format": "wav",  # Request WAV format for Wav2Lip
-                "sample_rate": 16000  # Wav2Lip expects 16kHz
-            }
-            
-            headers = {
-                "Authorization": f"Bearer {AISHA_AI_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            
-            # Try POST request with JSON payload
+        print(f"Calling Aisha AI TTS API: {AISHA_AI_API_URL}")
+        
+        # According to API docs: POST with multipart/form-data
+        # Endpoint: https://back.aisha.group/api/v1/tts/post/
+        # Headers: x-api-key, Content-Type: multipart/form-data, X-Channels, X-Quality, X-Rate, X-Format
+        # Form fields: transcript, language, run_diarization, model, mood (optional)
+        
+        # Map voice_id to model (default to gulnoza if not specified)
+        model = "gulnoza"  # Default model
+        if AISHA_AI_VOICE_ID and AISHA_AI_VOICE_ID.lower() in ["jaxongir", "jaxon"]:
+            model = "jaxongir"
+        
+        # Language: uz, en, ru
+        language = "uz"  # Default to Uzbek
+        
+        # Prepare form data
+        form_data = {
+            "transcript": text,
+            "language": language,
+            "run_diarization": "false",
+            "model": model,
+            "mood": "neutral"  # Optional: happy, neutral, sad
+        }
+        
+        # Prepare headers
+        headers = {
+            "x-api-key": AISHA_AI_API_KEY,
+            "X-Channels": "stereo",
+            "X-Quality": "64k",
+            "X-Rate": "16000",  # Sample rate for Wav2Lip
+            "X-Format": "mp3"  # API returns MP3, we'll convert to WAV
+        }
+        
+        async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as client:
             response = await client.post(
                 AISHA_AI_API_URL,
-                json=payload,
+                data=form_data,
                 headers=headers
             )
             
             if response.status_code == 200:
-                # If API returns audio data directly
+                # API returns audio data directly
                 audio_data = response.content
-                async with aiofiles.open(output_path, 'wb') as f:
+                
+                if len(audio_data) == 0:
+                    raise TTSServiceError("API returned empty audio data")
+                
+                # Save the audio (likely MP3 format from API)
+                temp_audio_path = output_path.with_suffix('.mp3')
+                async with aiofiles.open(temp_audio_path, 'wb') as f:
                     await f.write(audio_data)
-            elif response.status_code == 202:
-                # If API returns a job ID (async processing)
-                job_data = response.json()
-                job_id = job_data.get("job_id") or job_data.get("id")
                 
-                if not job_id:
-                    raise TTSServiceError("API returned 202 but no job ID found")
+                # Convert to WAV format with correct sample rate for Wav2Lip
+                await _convert_to_wav(temp_audio_path, output_path, sample_rate=16000)
                 
-                # Poll for completion
-                audio_url = await _poll_tts_job(client, job_id, headers)
-                await _download_audio_file(client, audio_url, output_path)
-            else:
-                # Try alternative: API might return audio URL
+                # Clean up temp MP3 file
+                if temp_audio_path.exists():
+                    temp_audio_path.unlink(missing_ok=True)
+                    
+            elif response.status_code == 201:
+                # API returns 201 with JSON containing audio_path URL
                 try:
                     result = response.json()
-                    audio_url = result.get("audio_url") or result.get("url") or result.get("file_url")
-                    if audio_url:
-                        await _download_audio_file(client, audio_url, output_path)
-                    else:
+                    audio_url = result.get("audio_path") or result.get("audio_url") or result.get("url")
+                    
+                    if not audio_url:
                         raise TTSServiceError(
-                            f"Aisha AI API returned status {response.status_code}: {response.text}"
+                            f"API returned 201 but no audio_path in response: {result}"
                         )
-                except ValueError:
+                    
+                    print(f"Downloading audio from: {audio_url}")
+                    
+                    # Download audio from the provided URL
+                    temp_audio_path = output_path.with_suffix('.mp3')
+                    await _download_audio_file(client, audio_url, temp_audio_path)
+                    
+                    # Convert to WAV format with correct sample rate for Wav2Lip
+                    await _convert_to_wav(temp_audio_path, output_path, sample_rate=16000)
+                    
+                    # Clean up temp MP3 file
+                    if temp_audio_path.exists():
+                        temp_audio_path.unlink(missing_ok=True)
+                        
+                except ValueError as e:
                     raise TTSServiceError(
-                        f"Aisha AI API returned status {response.status_code}: {response.text}"
+                        f"API returned 201 but response is not valid JSON: {response.text}"
                     )
+                except Exception as e:
+                    raise TTSServiceError(
+                        f"Failed to process API response (201): {str(e)}"
+                    )
+            else:
+                error_msg = f"Aisha AI API returned status {response.status_code}"
+                try:
+                    error_detail = response.text
+                    error_msg += f": {error_detail}"
+                except:
+                    pass
+                raise TTSServiceError(error_msg)
         
-        # Ensure audio is in correct format for Wav2Lip (16kHz WAV)
-        await _ensure_wav_format(output_path, sample_rate=16000)
-        
+        # Verify output file exists and is not empty
         if not output_path.exists() or output_path.stat().st_size == 0:
             raise TTSServiceError("Generated audio file is empty or does not exist")
         
+        print(f"Successfully generated audio: {output_path} ({output_path.stat().st_size} bytes)")
         return output_path
         
     except httpx.TimeoutException:
-        raise TTSServiceError("TTS API request timed out")
+        raise TTSServiceError("TTS API request timed out after 120 seconds")
+    except httpx.ConnectError as e:
+        raise TTSServiceError(
+            f"TTS API connection failed. Cannot reach {AISHA_AI_API_URL}. "
+            f"Error: {str(e)}. Please check your network connection and verify the API URL is correct."
+        )
     except httpx.RequestError as e:
         raise TTSServiceError(f"TTS API request failed: {str(e)}")
+    except TTSServiceError:
+        # Re-raise our custom errors
+        raise
     except Exception as e:
         raise TTSServiceError(f"TTS generation failed: {str(e)}")
-
-
-async def _poll_tts_job(client: httpx.AsyncClient, job_id: str, headers: dict, max_attempts: int = 60) -> str:
-    """
-    Poll TTS job until completion.
-    
-    Args:
-        client: HTTP client
-        job_id: Job ID to poll
-        headers: Request headers
-        max_attempts: Maximum polling attempts
-        
-    Returns:
-        URL to the generated audio file
-    """
-    import asyncio
-    
-    status_url = f"{AISHA_AI_API_URL}/jobs/{job_id}"
-    
-    for attempt in range(max_attempts):
-        await asyncio.sleep(2)  # Wait 2 seconds between polls
-        
-        response = await client.get(status_url, headers=headers)
-        
-        if response.status_code == 200:
-            result = response.json()
-            status = result.get("status", "").lower()
-            
-            if status == "completed" or status == "success":
-                audio_url = result.get("audio_url") or result.get("url") or result.get("file_url")
-                if audio_url:
-                    return audio_url
-                else:
-                    raise TTSServiceError("Job completed but no audio URL found")
-            elif status == "failed" or status == "error":
-                error_msg = result.get("error", "Unknown error")
-                raise TTSServiceError(f"TTS job failed: {error_msg}")
-            # Continue polling if status is "processing" or "pending"
-    
-    raise TTSServiceError("TTS job polling timed out")
 
 
 async def _download_audio_file(client: httpx.AsyncClient, audio_url: str, output_path: Path) -> None:
@@ -162,35 +179,42 @@ async def _download_audio_file(client: httpx.AsyncClient, audio_url: str, output
         audio_url: URL to audio file
         output_path: Path to save the file
     """
-    response = await client.get(audio_url, timeout=60.0)
-    response.raise_for_status()
-    
-    async with aiofiles.open(output_path, 'wb') as f:
-        await f.write(response.content)
+    try:
+        response = await client.get(audio_url, timeout=120.0, follow_redirects=True)
+        response.raise_for_status()
+        
+        if len(response.content) == 0:
+            raise TTSServiceError(f"Downloaded audio file from {audio_url} is empty")
+        
+        async with aiofiles.open(output_path, 'wb') as f:
+            await f.write(response.content)
+            
+        print(f"Downloaded audio file: {output_path} ({output_path.stat().st_size} bytes)")
+    except httpx.HTTPStatusError as e:
+        raise TTSServiceError(f"Failed to download audio from {audio_url}: HTTP {e.response.status_code}")
+    except httpx.RequestError as e:
+        raise TTSServiceError(f"Failed to download audio from {audio_url}: {str(e)}")
 
 
-async def _ensure_wav_format(audio_path: Path, sample_rate: int = 16000) -> None:
+async def _convert_to_wav(input_path: Path, output_path: Path, sample_rate: int = 16000) -> None:
     """
-    Ensure audio is in WAV format with correct sample rate using ffmpeg.
+    Convert audio file to WAV format with specified sample rate using ffmpeg.
     
     Args:
-        audio_path: Path to audio file
+        input_path: Path to input audio file (MP3, etc.)
+        output_path: Path to output WAV file
         sample_rate: Target sample rate (default 16000 for Wav2Lip)
     """
-    # Check if file is already WAV with correct sample rate
-    # For simplicity, we'll always convert to ensure compatibility
-    temp_path = audio_path.with_suffix('.temp.wav')
-    
     try:
         # Use ffmpeg to convert to WAV with correct sample rate
         cmd = [
             'ffmpeg',
             '-y',  # Overwrite output file
-            '-i', str(audio_path),
+            '-i', str(input_path),
             '-ar', str(sample_rate),  # Set sample rate
-            '-ac', '1',  # Mono channel
+            '-ac', '1',  # Mono channel (Wav2Lip works better with mono)
             '-f', 'wav',  # WAV format
-            str(temp_path)
+            str(output_path)
         ]
         
         result = subprocess.run(
@@ -200,21 +224,15 @@ async def _ensure_wav_format(audio_path: Path, sample_rate: int = 16000) -> None
             check=True
         )
         
-        # Replace original with converted file
-        if temp_path.exists():
-            audio_path.unlink(missing_ok=True)
-            temp_path.rename(audio_path)
+        if not output_path.exists():
+            raise TTSServiceError(f"FFmpeg conversion failed: output file not created")
             
     except subprocess.CalledProcessError as e:
-        # If conversion fails, check if file is already in correct format
-        if audio_path.suffix.lower() == '.wav':
-            # Assume it's already correct format
-            temp_path.unlink(missing_ok=True)
-        else:
-            raise TTSServiceError(f"Failed to convert audio to WAV format: {e.stderr}")
+        error_msg = f"Failed to convert audio to WAV format"
+        if e.stderr:
+            error_msg += f": {e.stderr}"
+        raise TTSServiceError(error_msg)
     except FileNotFoundError:
-        # ffmpeg not found - assume file is already correct
-        temp_path.unlink(missing_ok=True)
-        if audio_path.suffix.lower() != '.wav':
-            raise TTSServiceError("ffmpeg not found and audio is not in WAV format")
-
+        raise TTSServiceError(
+            "ffmpeg not found. Please install ffmpeg: sudo apt-get install ffmpeg"
+        )

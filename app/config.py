@@ -16,9 +16,10 @@ WAV2LIP_INFERENCE_SCRIPT = WAV2LIP_ROOT / "inference.py"
 WAV2LIP_TEMP_DIR = WAV2LIP_ROOT / "temp"
 
 # Aisha AI TTS Configuration
+# API Documentation: https://aisha.group/en/api-documentation
 AISHA_AI_API_KEY = os.getenv("AISHA_AI_API_KEY", "")
-AISHA_AI_API_URL = os.getenv("AISHA_AI_API_URL", "https://api.aisha.ai/v1/tts")
-AISHA_AI_VOICE_ID = os.getenv("AISHA_AI_VOICE_ID", "uzbek")
+AISHA_AI_API_URL = os.getenv("AISHA_AI_API_URL", "https://back.aisha.group/api/v1/tts/post/")
+AISHA_AI_VOICE_ID = os.getenv("AISHA_AI_VOICE_ID", "gulnoza")  # Options: gulnoza, jaxongir
 
 # File upload configuration
 UPLOAD_DIR = BASE_DIR / "uploads"

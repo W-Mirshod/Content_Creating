@@ -18,9 +18,10 @@ services:
       - ./Wav2Lip-master/temp:/app/Wav2Lip-master/temp
     environment:
       # Aisha AI TTS Configuration - UPDATE THESE VALUES
-      - AISHA_AI_API_KEY=SqjJaXby.JGnDLhKkvOCBLNkpaibCfsHvZOJ7KxGK
-      - AISHA_AI_API_URL=https://api.aisha.ai/v1/tts
-      - AISHA_AI_VOICE_ID=uzbek
+      # API Documentation: https://aisha.group/en/api-documentation
+      - AISHA_AI_API_KEY=6Z35gdeG.qFWW0BRL3tkd59fcUiqRk94DmpN8z7lD
+      - AISHA_AI_API_URL=https://back.aisha.group/api/v1/tts/post/
+      - AISHA_AI_VOICE_ID=gulnoza
       # Wav2Lip Configuration
       - WAV2LIP_CHECKPOINT_PATH=Wav2Lip-master/checkpoints/wav2lip_gan.pth
       # File Upload Configuration

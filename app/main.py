@@ -133,9 +133,15 @@ async def process_video_endpoint(
                 output_path=output_path
             )
         except Wav2LipServiceError as e:
+            error_msg = str(e)
+            if "Face not detected" in error_msg:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Face not detected in video. Please ensure the video contains a clear, well-lit face visible throughout all frames. Try using a head-and-shoulders video with good lighting."
+                )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Wav2Lip processing failed: {str(e)}"
+                detail=f"Wav2Lip processing failed: {error_msg}"
             )
         
         # Return processed video file
