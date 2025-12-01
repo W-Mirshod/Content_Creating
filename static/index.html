@@ -271,8 +271,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎬 Uzbek TTS Wav2Lip</h1>
-            <p>Generate lip-synced videos from Uzbek text</p>
+            <h1>🎬 Wav2Lip Video Lip Sync</h1>
+            <p>Generate lip-synced videos from video and audio files</p>
         </div>
 
         <div class="content">
@@ -289,15 +289,14 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="uzbekText">Uzbek Text for Speech</label>
-                    <textarea 
-                        id="uzbekText" 
-                        name="text" 
-                        placeholder="Enter Uzbek text here... (e.g., Salom, bu sinov matni)"
-                        required
-                        minlength="1"
-                        maxlength="5000"
-                    ></textarea>
+                    <label for="audioFile">Upload Audio File</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="audioFile" name="audio" accept="audio/*" required>
+                        <label for="audioFile" class="file-input-label" id="audioFileLabel">
+                            <span>🎵 Click to select audio file (WAV, MP3, M4A)</span>
+                        </label>
+                    </div>
+                    <div class="file-name" id="audioFileName"></div>
                 </div>
 
                 <button type="submit" class="submit-btn" id="submitBtn">
@@ -327,7 +326,7 @@
             <div class="info-box">
                 <p><strong>ℹ️ Instructions:</strong></p>
                 <p>1. <strong>Upload a video file with a CLEAR face</strong> - face should be well-lit and visible throughout</p>
-                <p>2. Enter Uzbek text that you want to lip-sync</p>
+                <p>2. Upload an audio file to lip-sync with the video</p>
                 <p>3. Click "Process Video" and wait for processing</p>
                 <p>4. Download your lip-synced video when ready</p>
 
@@ -338,6 +337,13 @@
                     <li>Face should not be too small or blurry</li>
                     <li>Supported formats: MP4, AVI, MOV, MKV</li>
                     <li>Recommended: Head-and-shoulders videos work best</li>
+                </ul>
+
+                <p><strong>🎵 Audio Requirements:</strong></p>
+                <ul style="text-align: left; margin: 10px 0; padding-left: 20px;">
+                    <li>Supported formats: WAV, MP3, M4A</li>
+                    <li>Audio will be automatically converted to WAV if needed</li>
+                    <li>Recommended: Clear audio without background noise</li>
                 </ul>
 
                 <p><strong>❓ Troubleshooting:</strong></p>
@@ -355,8 +361,11 @@
     <script>
         const form = document.getElementById('uploadForm');
         const videoFileInput = document.getElementById('videoFile');
+        const audioFileInput = document.getElementById('audioFile');
         const fileLabel = document.getElementById('fileLabel');
+        const audioFileLabel = document.getElementById('audioFileLabel');
         const fileName = document.getElementById('fileName');
+        const audioFileName = document.getElementById('audioFileName');
         const submitBtn = document.getElementById('submitBtn');
         const progressContainer = document.getElementById('progressContainer');
         const progressFill = document.getElementById('progressFill');
@@ -367,13 +376,23 @@
         const errorContainer = document.getElementById('errorContainer');
         const errorMessage = document.getElementById('errorMessage');
 
-        // Handle file selection
+        // Handle video file selection
         videoFileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
                 fileLabel.classList.add('has-file');
                 fileLabel.innerHTML = `<span>✓ ${file.name}</span>`;
                 fileName.textContent = `File: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            }
+        });
+
+        // Handle audio file selection
+        audioFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                audioFileLabel.classList.add('has-file');
+                audioFileLabel.innerHTML = `<span>✓ ${file.name}</span>`;
+                audioFileName.textContent = `File: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
             }
         });
 
@@ -391,10 +410,16 @@
             submitBtn.textContent = '⏳ Processing...';
 
             const formData = new FormData(form);
-            const text = formData.get('text').trim();
+            const videoFile = formData.get('video');
+            const audioFile = formData.get('audio');
 
-            if (!text) {
-                showError('Please enter Uzbek text');
+            if (!videoFile || videoFile.size === 0) {
+                showError('Please select a video file');
+                return;
+            }
+
+            if (!audioFile || audioFile.size === 0) {
+                showError('Please select an audio file');
                 return;
             }
 

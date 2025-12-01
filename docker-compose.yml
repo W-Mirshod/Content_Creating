@@ -23,14 +23,14 @@ services:
       - AISHA_AI_API_URL=https://back.aisha.group/api/v1/tts/post/
       - AISHA_AI_VOICE_ID=gulnoza
       # Wav2Lip Configuration
-      - WAV2LIP_CHECKPOINT_PATH=Wav2Lip-master/checkpoints/wav2lip_gan.pth
+      - WAV2LIP_CHECKPOINT_PATH=/app/Wav2Lip-master/checkpoints/wav2lip_gan.pth
       # File Upload Configuration
       - MAX_FILE_SIZE=104857600
       - MIN_TEXT_LENGTH=1
       - MAX_TEXT_LENGTH=5000
       # Wav2Lip Processing Parameters
-      - WAV2LIP_PADS=0,10,0,0
-      - WAV2LIP_RESIZE_FACTOR=1
+      - WAV2LIP_PADS=0,20,0,0
+      - WAV2LIP_RESIZE_FACTOR=2
       - WAV2LIP_FPS=25.0
     # Uncomment below for GPU support (requires nvidia-docker)
     # deploy:

@@ -6,7 +6,7 @@ from typing import Optional
 import aiofiles
 from fastapi import UploadFile
 
-from app.config import UPLOAD_DIR, OUTPUT_DIR, WAV2LIP_TEMP_DIR, MAX_FILE_SIZE, ALLOWED_VIDEO_FORMATS
+from app.config import UPLOAD_DIR, OUTPUT_DIR, WAV2LIP_TEMP_DIR, MAX_FILE_SIZE, ALLOWED_VIDEO_FORMATS, ALLOWED_AUDIO_FORMATS
 
 
 async def save_uploaded_file(upload_file: UploadFile, directory: Path = UPLOAD_DIR) -> Path:
@@ -56,6 +56,29 @@ def validate_video_file(file_path: Path) -> bool:
         raise ValueError(
             f"Unsupported video format: {file_ext}. "
             f"Allowed formats: {', '.join(ALLOWED_VIDEO_FORMATS)}"
+        )
+    
+    return True
+
+
+def validate_audio_file(file_path: Path) -> bool:
+    """
+    Validate that the file is a supported audio format.
+    
+    Args:
+        file_path: Path to the audio file
+        
+    Returns:
+        True if valid, raises ValueError if invalid
+    """
+    if not file_path.exists():
+        raise ValueError(f"File does not exist: {file_path}")
+    
+    file_ext = file_path.suffix.lower().lstrip('.')
+    if file_ext not in ALLOWED_AUDIO_FORMATS:
+        raise ValueError(
+            f"Unsupported audio format: {file_ext}. "
+            f"Allowed formats: {', '.join(ALLOWED_AUDIO_FORMATS)}"
         )
     
     return True

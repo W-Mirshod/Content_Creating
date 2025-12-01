@@ -1,25 +1,24 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, status
+from fastapi import FastAPI, File, UploadFile, HTTPException, status
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import traceback
 
 from app.models import VideoProcessResponse, ProcessingStatus, HealthResponse
-from app.services.tts_service import generate_audio, TTSServiceError
 from app.services.wav2lip_service import process_video, validate_wav2lip_setup, Wav2LipServiceError
 from app.utils.file_manager import (
     save_uploaded_file,
     validate_video_file,
+    validate_audio_file,
     create_output_path,
-    create_temp_file,
     cleanup_file,
     ensure_wav2lip_temp_dir
 )
-from app.config import AISHA_AI_API_KEY, WAV2LIP_CHECKPOINT, BASE_DIR
+from app.config import WAV2LIP_CHECKPOINT, BASE_DIR
 
 app = FastAPI(
-    title="Uzbek TTS Wav2Lip API",
-    description="API for generating lip-synced videos from Uzbek text using Aisha AI TTS and Wav2Lip",
+    title="Wav2Lip API",
+    description="API for generating lip-synced videos from video and audio files using Wav2Lip",
     version="1.0.0"
 )
 
@@ -54,7 +53,7 @@ async def health_check():
         status="ok",
         wav2lip_available=wav2lip_valid,
         checkpoint_exists=checkpoint_exists,
-        aisha_ai_configured=bool(AISHA_AI_API_KEY and AISHA_AI_API_KEY.strip() and AISHA_AI_API_KEY != "your_aisha_ai_api_key_here"),
+        aisha_ai_configured=False,
         wav2lip_error=wav2lip_error,
         checkpoint_path=str(checkpoint_path)
     )
@@ -63,20 +62,19 @@ async def health_check():
 @app.post("/process-video", response_model=VideoProcessResponse)
 async def process_video_endpoint(
     video: UploadFile = File(..., description="Video file to process"),
-    text: str = Form(..., description="Uzbek text to convert to speech and lip-sync")
+    audio: UploadFile = File(..., description="Audio file to lip-sync with video")
 ):
     """
-    Process a video file with Uzbek TTS and Wav2Lip lip-sync.
+    Process a video file with Wav2Lip lip-sync using an uploaded audio file.
     
     This endpoint:
-    1. Accepts a video file and Uzbek text
-    2. Generates TTS audio using Aisha AI
-    3. Processes video with Wav2Lip to lip-sync with the generated audio
-    4. Returns the processed video file
+    1. Accepts a video file and an audio file
+    2. Processes video with Wav2Lip to lip-sync with the provided audio
+    3. Returns the processed video file
     
     Args:
         video: Video file (MP4, AVI, MOV, etc.)
-        text: Uzbek text to convert to speech
+        audio: Audio file (WAV, MP3, M4A, etc.)
         
     Returns:
         Processed video file download
@@ -86,15 +84,6 @@ async def process_video_endpoint(
     output_path = None
     
     try:
-        # Validate text input
-        if not text or not text.strip():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Text cannot be empty"
-            )
-        
-        text = text.strip()
-        
         # Save uploaded video file
         video_path = await save_uploaded_file(video)
         
@@ -107,21 +96,16 @@ async def process_video_endpoint(
                 detail=str(e)
             )
         
-        # Ensure Wav2Lip temp directory exists
-        ensure_wav2lip_temp_dir()
+        # Save uploaded audio file
+        audio_path = await save_uploaded_file(audio, directory=ensure_wav2lip_temp_dir())
         
-        # Generate TTS audio
+        # Validate audio file
         try:
-            audio_path = create_temp_file(
-                ensure_wav2lip_temp_dir(),
-                prefix="tts_audio",
-                extension="wav"
-            )
-            await generate_audio(text, audio_path)
-        except TTSServiceError as e:
+            validate_audio_file(audio_path)
+        except ValueError as e:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"TTS generation failed: {str(e)}"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
             )
         
         # Process video with Wav2Lip
