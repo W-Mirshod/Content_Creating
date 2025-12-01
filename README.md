@@ -11,27 +11,137 @@ A FastAPI application that integrates Uzbek Text-to-Speech (Aisha AI) with Wav2L
 
 ## Prerequisites
 
-- Python 3.8+
+- Python 3.8+ (for local installation)
+- Docker and Docker Compose (for Docker installation)
 - ffmpeg (required by Wav2Lip)
 - Wav2Lip checkpoint file (`wav2lip_gan.pth`)
 - Aisha AI API key
 
 ## Installation
 
-### 1. Clone or navigate to the project directory
+### Option 1: Docker Compose (Recommended)
+
+#### 1. Install Docker and Docker Compose
+
+```bash
+# Ubuntu/Debian
+sudo apt-get update
+sudo apt-get install docker.io docker-compose
+
+# macOS
+brew install docker docker-compose
+
+# Or download Docker Desktop from https://www.docker.com/products/docker-desktop
+```
+
+#### 2. Configure Environment Variables
+
+Create a `.env` file in the project root:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your Aisha AI API credentials:
+
+```env
+AISHA_AI_API_KEY=your_aisha_ai_api_key_here
+AISHA_AI_API_URL=https://api.aisha.ai/v1/tts
+AISHA_AI_VOICE_ID=uzbek
+```
+
+#### 3. Download Wav2Lip Checkpoint
+
+Download the Wav2Lip checkpoint file and place it in the checkpoints directory:
+
+```bash
+mkdir -p Wav2Lip-master/checkpoints
+# Download wav2lip_gan.pth and place it at:
+# Wav2Lip-master/checkpoints/wav2lip_gan.pth
+```
+
+#### 4. Build and Run with Docker Compose
+
+**For CPU-only (slower processing):**
+
+```bash
+docker-compose up -d
+```
+
+**For GPU support (faster processing, requires NVIDIA GPU and nvidia-docker):**
+
+First, install nvidia-docker:
+```bash
+# Ubuntu/Debian
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+sudo systemctl restart docker
+```
+
+Then run with GPU support:
+```bash
+docker-compose -f docker-compose.gpu.yml up -d --build
+```
+
+**Note:** The GPU version uses a different Dockerfile (`Dockerfile.gpu`) that includes CUDA support and PyTorch with GPU capabilities.
+
+#### 5. Check Status
+
+```bash
+# View logs
+docker-compose logs -f
+
+# Check health
+curl http://localhost:8000/health
+```
+
+#### 6. Stop the Service
+
+```bash
+# Stop CPU version
+docker-compose down
+
+# Stop GPU version
+docker-compose -f docker-compose.gpu.yml down
+```
+
+#### 7. Useful Docker Commands
+
+```bash
+# View logs
+docker-compose logs -f api
+
+# Restart the service
+docker-compose restart
+
+# Rebuild after code changes
+docker-compose up -d --build
+
+# Execute commands in container
+docker-compose exec api bash
+
+# Check container status
+docker-compose ps
+```
+
+### Option 2: Local Installation
+
+#### 1. Clone or navigate to the project directory
 
 ```bash
 cd Content_Creating
 ```
 
-### 2. Create a virtual environment (recommended)
+#### 2. Create a virtual environment (recommended)
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-### 3. Install dependencies
+#### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -44,7 +154,7 @@ pip install -r requirements.txt
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 ```
 
-### 4. Install ffmpeg
+#### 4. Install ffmpeg
 
 ```bash
 # Ubuntu/Debian
@@ -57,7 +167,7 @@ brew install ffmpeg
 # Download from https://ffmpeg.org/download.html
 ```
 
-### 5. Download Wav2Lip Checkpoint
+#### 5. Download Wav2Lip Checkpoint
 
 Download the Wav2Lip checkpoint file and place it in the checkpoints directory:
 
@@ -73,7 +183,7 @@ mkdir -p Wav2Lip-master/checkpoints
 The checkpoint file can be downloaded from:
 - [Wav2Lip GAN Model](https://drive.google.com/file/d/15G3U08c8xsCkOqQxE38Z2XXDnPcOptNk/view?usp=share_link)
 
-### 6. Configure Environment Variables
+#### 6. Configure Environment Variables
 
 Create a `.env` file in the project root:
 

@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uzbek-tts-wav2lip-api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount Wav2Lip checkpoints (if downloaded locally)
+      - ./Wav2Lip-master/checkpoints:/app/Wav2Lip-master/checkpoints
+      # Mount uploads and outputs for persistence
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      # Mount temp directory
+      - ./Wav2Lip-master/temp:/app/Wav2Lip-master/temp
+    environment:
+      - AISHA_AI_API_KEY=${AISHA_AI_API_KEY}
+      - AISHA_AI_API_URL=${AISHA_AI_API_URL:-https://api.aisha.ai/v1/tts}
+      - AISHA_AI_VOICE_ID=${AISHA_AI_VOICE_ID:-uzbek}
+      - WAV2LIP_CHECKPOINT_PATH=${WAV2LIP_CHECKPOINT_PATH:-Wav2Lip-master/checkpoints/wav2lip_gan.pth}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-104857600}
+      - MIN_TEXT_LENGTH=${MIN_TEXT_LENGTH:-1}
+      - MAX_TEXT_LENGTH=${MAX_TEXT_LENGTH:-5000}
+      - WAV2LIP_PADS=${WAV2LIP_PADS:-0,10,0,0}
+      - WAV2LIP_RESIZE_FACTOR=${WAV2LIP_RESIZE_FACTOR:-1}
+      - WAV2LIP_FPS=${WAV2LIP_FPS:-25.0}
+    # Uncomment below for GPU support (requires nvidia-docker)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+

@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Outputs and uploads (will be mounted as volumes)
+uploads/*
+!uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+
+# Wav2Lip temp files
+Wav2Lip-master/temp/*
+Wav2Lip-master/results/*
+
+# Checkpoints (will be mounted as volume, but don't copy large files)
+Wav2Lip-master/checkpoints/*.pth
+Wav2Lip-master/checkpoints/*.pkl
+
+# Other
+*.log
+.DS_Store
+Thumbs.db
+
