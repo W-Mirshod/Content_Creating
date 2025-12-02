@@ -53,7 +53,6 @@ async def health_check():
         status="ok",
         wav2lip_available=wav2lip_valid,
         checkpoint_exists=checkpoint_exists,
-        aisha_ai_configured=False,
         wav2lip_error=wav2lip_error,
         checkpoint_path=str(checkpoint_path)
     )

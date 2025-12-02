@@ -1,3 +1,19 @@
+"""
+[DEPRECATED] Aisha AI TTS Service
+
+This module is kept for backward compatibility but is NO LONGER ACTIVELY MAINTAINED.
+
+The project focus has shifted from TTS+Wav2Lip integration to high-quality video 
+lip-sync enhancement using Wav2Lip-UHQ.
+
+If you need TTS functionality:
+1. Use an external TTS service (Aisha AI, Google Cloud TTS, etc.)
+2. Generate audio files with your TTS service
+3. Use the /process-video endpoint with pre-generated audio files
+
+For more information, see DEPRECATION_NOTICE.md
+"""
+
 import httpx
 import aiofiles
 from pathlib import Path

@@ -17,21 +17,21 @@ services:
       # Mount temp directory
       - ./Wav2Lip-master/temp:/app/Wav2Lip-master/temp
     environment:
-      # Aisha AI TTS Configuration - UPDATE THESE VALUES
-      # API Documentation: https://aisha.group/en/api-documentation
-      - AISHA_AI_API_KEY=your_aisha_ai_api_key_here
-      - AISHA_AI_API_URL=https://back.aisha.group/api/v1/tts/post/
-      - AISHA_AI_VOICE_ID=gulnoza
       # Wav2Lip Configuration
       - WAV2LIP_CHECKPOINT_PATH=/app/Wav2Lip-master/checkpoints/wav2lip_gan.pth
       # File Upload Configuration
       - MAX_FILE_SIZE=104857600
-      - MIN_TEXT_LENGTH=1
-      - MAX_TEXT_LENGTH=5000
       # Wav2Lip Processing Parameters
-      - WAV2LIP_PADS=0,20,0,0
+      - WAV2LIP_PADS=0,30,0,0
       - WAV2LIP_RESIZE_FACTOR=2
       - WAV2LIP_FPS=25.0
+      # Wav2Lip UHQ Post-Processing (requires Stable Diffusion API running)
+      # Set to True to enable UHQ enhancement with ControlNet
+      - WAV2LIP_UHQ_ENABLED=False
+      - WAV2LIP_UHQ_DENOISING_STRENGTH=1.0
+      - WAV2LIP_UHQ_MASK_BLUR=8
+      # Stable Diffusion API endpoint (must be running with ControlNet extension)
+      - STABLE_DIFFUSION_API_URL=http://localhost:7860
       - NVIDIA_VISIBLE_DEVICES=all
     # GPU support (requires nvidia-docker and nvidia-container-toolkit)
     deploy:

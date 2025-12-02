@@ -1,13 +1,20 @@
 # Uzbek TTS Wav2Lip API
 
-A FastAPI application that integrates Uzbek Text-to-Speech (Aisha AI) with Wav2Lip to produce lip-synced videos from Uzbek text input.
+> **⚠️ NOTICE**: This project has evolved. See [DEPRECATION_NOTICE.md](DEPRECATION_NOTICE.md) for information about deprecated components. The primary focus is now **Wav2Lip-UHQ video enhancement** rather than TTS integration.
+
+A FastAPI application that generates high-quality lip-synced videos using Wav2Lip with optional UHQ (Ultra High Quality) post-processing enhancement.
 
 ## Features
 
-- **Uzbek TTS Integration**: Converts Uzbek text to speech using Aisha AI
-- **Wav2Lip Processing**: Lip-syncs videos with generated audio using Wav2Lip
+- **High-Quality Lip-Sync**: Uses `wav2lip_gan.pth` model for superior quality
+- **Optional UHQ Enhancement**: Post-process videos with ControlNet for ultra-high quality
+- **Flexible Input**: Works with pre-generated audio (any source)
 - **RESTful API**: Simple HTTP API for video processing
+- **GPU Support**: Optimized for NVIDIA GPUs with CUDA support
+- **Docker Ready**: Easy deployment with Docker and Docker Compose
 - **File Management**: Automatic cleanup of temporary files
+
+> **Legacy**: ~~Uzbek TTS Integration~~ - [Now deprecated](DEPRECATION_NOTICE.md). Use external TTS services if needed.
 
 ## Prerequisites
 

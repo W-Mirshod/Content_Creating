@@ -10,7 +10,8 @@ from app.config import (
     WAV2LIP_TEMP_DIR,
     WAV2LIP_PADS,
     WAV2LIP_RESIZE_FACTOR,
-    WAV2LIP_FPS
+    WAV2LIP_FPS,
+    WAV2LIP_UHQ_ENABLED,
 )
 
 
@@ -26,10 +27,11 @@ def process_video(
     checkpoint_path: Optional[Path] = None,
     pads: Optional[List[int]] = None,
     resize_factor: Optional[int] = None,
-    fps: Optional[float] = None
+    fps: Optional[float] = None,
+    use_uhq: Optional[bool] = None
 ) -> Path:
     """
-    Process video with Wav2Lip to lip-sync with audio.
+    Process video with Wav2Lip to lip-sync with audio, optionally enhancing with UHQ post-processing.
     
     Args:
         video_path: Path to input video file
@@ -39,6 +41,7 @@ def process_video(
         pads: Face bounding box padding [top, bottom, left, right]
         resize_factor: Resolution reduction factor
         fps: Frames per second (for static images)
+        use_uhq: Whether to apply UHQ post-processing (uses config default if None)
         
     Returns:
         Path to processed video file
@@ -70,6 +73,7 @@ def process_video(
     pads_list = pads if pads is not None else WAV2LIP_PADS
     resize = resize_factor if resize_factor is not None else WAV2LIP_RESIZE_FACTOR
     fps_value = fps if fps is not None else WAV2LIP_FPS
+    uhq_enabled = use_uhq if use_uhq is not None else WAV2LIP_UHQ_ENABLED
     
     # Ensure output directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -87,6 +91,7 @@ def process_video(
         '--outfile', str(output_path),
         '--pads', *map(str, pads_list),
         '--resize_factor', str(resize),
+        '--nosmooth',  # Disable smoothing for better quality
     ]
     
     # Add FPS if provided (useful for static images)
@@ -111,6 +116,33 @@ def process_video(
                 f"Wav2Lip processing completed but output file not found: {output_path}\n"
                 f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
             )
+        
+        # Apply UHQ post-processing if enabled
+        if uhq_enabled:
+            print("[INFO] Applying Wav2Lip UHQ enhancement...")
+            try:
+                from app.services.wav2lip_uhq_service import enhance_video, cleanup_enhancement_cache
+                
+                uhq_output = output_path.parent / f"{output_path.stem}_uhq{output_path.suffix}"
+                enhanced_video = enhance_video(
+                    output_path,
+                    video_path,
+                    uhq_output,
+                    use_controlnet=True
+                )
+                
+                # Replace original with enhanced version
+                output_path.unlink()
+                enhanced_video.rename(output_path)
+                
+                # Cleanup enhancement cache
+                cleanup_enhancement_cache(uhq_output.parent)
+                
+            except ImportError:
+                print("[WARNING] Wav2Lip UHQ service not available, skipping enhancement")
+            except Exception as e:
+                print(f"[WARNING] UHQ enhancement failed, returning base Wav2Lip output: {e}")
+                # Continue with non-enhanced output
         
         return output_path
         
