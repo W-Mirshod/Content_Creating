@@ -9,6 +9,8 @@ services:
     ports:
       - "6070:6070"
     volumes:
+      # Mount static files for live updates
+      - ./static:/app/static
       # Mount Wav2Lip checkpoints (if downloaded locally)
       - ./Wav2Lip-master/checkpoints:/app/Wav2Lip-master/checkpoints
       # Mount uploads and outputs for persistence
