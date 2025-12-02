@@ -5,7 +5,12 @@ from pathlib import Path
 import traceback
 
 from app.models import VideoProcessResponse, ProcessingStatus, HealthResponse
-from app.services.wav2lip_service import process_video, validate_wav2lip_setup, Wav2LipServiceError
+from app.services.wav2lip_service import (
+    process_video, 
+    validate_wav2lip_setup, 
+    validate_checkpoint_in_setup,
+    Wav2LipServiceError
+)
 from app.utils.file_manager import (
     save_uploaded_file,
     validate_video_file,
@@ -49,10 +54,23 @@ async def health_check():
     checkpoint_path = Path(WAV2LIP_CHECKPOINT)
     checkpoint_exists = checkpoint_path.exists()
     
+    # Validate checkpoint if it exists
+    checkpoint_valid = False
+    checkpoint_error = None
+    if checkpoint_exists:
+        checkpoint_valid, checkpoint_error = validate_checkpoint_in_setup()
+    
+    # Combine errors if checkpoint validation failed
+    if checkpoint_error:
+        if wav2lip_error:
+            wav2lip_error = f"{wav2lip_error}; Checkpoint: {checkpoint_error}"
+        else:
+            wav2lip_error = f"Checkpoint: {checkpoint_error}"
+    
     return HealthResponse(
         status="ok",
         wav2lip_available=wav2lip_valid,
-        checkpoint_exists=checkpoint_exists,
+        checkpoint_exists=checkpoint_exists and checkpoint_valid,
         wav2lip_error=wav2lip_error,
         checkpoint_path=str(checkpoint_path)
     )

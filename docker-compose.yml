@@ -28,6 +28,12 @@ services:
       - WAV2LIP_PADS=0,30,0,0
       - WAV2LIP_RESIZE_FACTOR=2
       - WAV2LIP_FPS=25.0
+      # Performance Optimization - CPU Threading (adjust for your CPU: 24 cores = 24 threads)
+      - OMP_NUM_THREADS=24
+      - MKL_NUM_THREADS=24
+      - TORCH_NUM_THREADS=24
+      - WAV2LIP_FACE_DET_BATCH_SIZE=64
+      - WAV2LIP_BATCH_SIZE=256
       # Wav2Lip UHQ Post-Processing (requires Stable Diffusion API running)
       # Set to True to enable UHQ enhancement with ControlNet
       - WAV2LIP_UHQ_ENABLED=True

@@ -43,6 +43,14 @@ RUN mkdir -p uploads outputs sd-wav2lip-uhq/scripts/wav2lip/temp sd-wav2lip-uhq/
 ENV PYTHONPATH=/app:/app/sd-wav2lip-uhq
 ENV PYTHONUNBUFFERED=1
 
+# CPU threading optimization for multi-core systems (defaults to 24 threads)
+# These can be overridden in docker-compose.yml for your specific CPU
+ENV OMP_NUM_THREADS=24
+ENV MKL_NUM_THREADS=24
+ENV NUMEXPR_NUM_THREADS=24
+ENV TORCH_NUM_THREADS=24
+ENV OPENBLAS_NUM_THREADS=24
+
 # Expose port
 EXPOSE 6070
 

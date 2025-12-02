@@ -1,5 +1,7 @@
 import subprocess
 import sys
+import traceback
+import torch
 from pathlib import Path
 from typing import Optional, List, Tuple
 
@@ -12,6 +14,9 @@ from app.config import (
     WAV2LIP_RESIZE_FACTOR,
     WAV2LIP_FPS,
     WAV2LIP_UHQ_ENABLED,
+    WAV2LIP_FACE_DET_BATCH_SIZE,
+    WAV2LIP_BATCH_SIZE,
+    TORCH_NUM_THREADS,
 )
 
 # Import W2l class from sd-wav2lip-uhq
@@ -31,6 +36,56 @@ except Exception as e:
 class Wav2LipServiceError(Exception):
     """Custom exception for Wav2Lip service errors"""
     pass
+
+
+def validate_checkpoint_file(checkpoint_path: Path) -> Tuple[bool, Optional[str]]:
+    """
+    Validate that a checkpoint file exists and can be loaded.
+    
+    Args:
+        checkpoint_path: Path to the checkpoint file
+        
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not checkpoint_path.exists():
+        return False, f"Checkpoint file does not exist: {checkpoint_path}"
+    
+    if not checkpoint_path.is_file():
+        return False, f"Checkpoint path is not a file: {checkpoint_path}"
+    
+    # Check file size (corrupted files are often very small)
+    file_size = checkpoint_path.stat().st_size
+    if file_size < 1024:  # Less than 1KB is definitely corrupted
+        return False, (
+            f"Checkpoint file appears corrupted (size: {file_size} bytes). "
+            f"Please re-download the checkpoint file from: "
+            f"https://iiitaphyd-my.sharepoint.com/:u:/g/personal/radrabha_m_research_iiit_ac_in/EdjI7bZlgApMqsVoEUUXpLsBxqXbn5z8VTmoxp55YNDcIA?e=n9ljGW"
+        )
+    
+    # Try to load the checkpoint to verify it's not corrupted
+    try:
+        # Use weights_only=False for compatibility with older checkpoints
+        # but set map_location to avoid loading to GPU unnecessarily
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        if device == 'cuda':
+            torch.load(checkpoint_path, map_location='cpu')
+        else:
+            torch.load(checkpoint_path, map_location=lambda storage, loc: storage)
+    except EOFError:
+        return False, (
+            f"Checkpoint file is corrupted or incomplete (EOFError). "
+            f"File size: {file_size} bytes. "
+            f"Please delete the file and re-download it from: "
+            f"https://iiitaphyd-my.sharepoint.com/:u:/g/personal/radrabha_m_research_iiit_ac_in/EdjI7bZlgApMqsVoEUUXpLsBxqXbn5z8VTmoxp55YNDcIA?e=n9ljGW"
+        )
+    except Exception as e:
+        return False, (
+            f"Checkpoint file cannot be loaded: {type(e).__name__}: {str(e)}. "
+            f"The file may be corrupted. Please re-download it."
+        )
+    
+    return True, None
 
 
 def process_video(
@@ -77,11 +132,11 @@ def process_video(
 
     # Use provided checkpoint or default from config
     checkpoint = Path(checkpoint_path) if checkpoint_path else Path(WAV2LIP_CHECKPOINT)
-    if not checkpoint.exists():
-        raise Wav2LipServiceError(
-            f"Wav2Lip checkpoint not found: {checkpoint}. "
-            f"Please download the checkpoint file and place it in the checkpoints directory."
-        )
+    
+    # Validate checkpoint file exists and is not corrupted
+    is_valid, error_msg = validate_checkpoint_file(checkpoint)
+    if not is_valid:
+        raise Wav2LipServiceError(error_msg)
 
     # Extract checkpoint name from path (e.g., "wav2lip_gan" from "wav2lip_gan.pth")
     checkpoint_name = checkpoint.stem  # Remove .pth extension
@@ -96,8 +151,31 @@ def process_video(
 
     # Ensure Wav2Lip temp directory exists
     WAV2LIP_TEMP_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Ensure Wav2Lip required directories exist (results, temp, checkpoints)
+    (WAV2LIP_ROOT / "results").mkdir(parents=True, exist_ok=True)
+    (WAV2LIP_ROOT / "temp").mkdir(parents=True, exist_ok=True)
+    (WAV2LIP_ROOT / "checkpoints").mkdir(parents=True, exist_ok=True)
+
+    # Optimize PyTorch for CPU if no GPU available
+    if not torch.cuda.is_available():
+        torch.set_num_threads(TORCH_NUM_THREADS)
+        torch.set_num_interop_threads(TORCH_NUM_THREADS)
+        print(f"[INFO] Configured PyTorch to use {TORCH_NUM_THREADS} threads for CPU inference")
 
     try:
+        # Optimize batch sizes for CPU performance
+        # Temporarily patch W2l class to use optimized batch sizes
+        original_init = W2l.__init__
+        def optimized_init(self, *args, **kwargs):
+            original_init(self, *args, **kwargs)
+            if self.device == 'cpu':
+                # Use optimized batch sizes for CPU
+                self.face_det_batch_size = WAV2LIP_FACE_DET_BATCH_SIZE
+                self.wav2lip_batch_size = WAV2LIP_BATCH_SIZE
+                print(f"[INFO] Using optimized batch sizes for CPU - Face Detection: {self.face_det_batch_size}, Wav2Lip: {self.wav2lip_batch_size}")
+        W2l.__init__ = optimized_init
+        
         # Instantiate W2l class with parameters
         w2l = W2l(
             face=str(video_path),
@@ -154,8 +232,35 @@ def process_video(
 
         return output_path
 
+    except EOFError as e:
+        # Specific handling for corrupted checkpoint files
+        error_msg = (
+            f"Checkpoint file appears corrupted or incomplete (EOFError). "
+            f"This usually means the file download was interrupted or the file is damaged. "
+            f"Please delete the checkpoint file at {checkpoint} and re-download it from: "
+            f"https://iiitaphyd-my.sharepoint.com/:u:/g/personal/radrabha_m_research_iiit_ac_in/EdjI7bZlgApMqsVoEUUXpLsBxqXbn5z8VTmoxp55YNDcIA?e=n9ljGW"
+        )
+        print(f"[ERROR] Wav2Lip processing failed: {error_msg}")
+        raise Wav2LipServiceError(error_msg)
     except Exception as e:
-        raise Wav2LipServiceError(f"Unexpected error during Wav2Lip processing: {str(e)}")
+        # Capture full error details including traceback
+        error_type = type(e).__name__
+        error_msg = str(e) if str(e) else "No error message provided"
+        tb_str = traceback.format_exc()
+        
+        # Log full error for debugging
+        print(f"[ERROR] Wav2Lip processing failed:")
+        print(f"  Type: {error_type}")
+        print(f"  Message: {error_msg}")
+        print(f"  Traceback:\n{tb_str}")
+        
+        # Create detailed error message
+        if error_msg:
+            detailed_error = f"{error_type}: {error_msg}"
+        else:
+            detailed_error = f"{error_type} (no message provided)"
+        
+        raise Wav2LipServiceError(f"Unexpected error during Wav2Lip processing: {detailed_error}")
 
 
 def validate_wav2lip_setup() -> Tuple[bool, Optional[str]]:
@@ -191,4 +296,16 @@ def validate_wav2lip_setup() -> Tuple[bool, Optional[str]]:
         return False, "; ".join(errors)
 
     return True, None
+
+
+def validate_checkpoint_in_setup() -> Tuple[bool, Optional[str]]:
+    """
+    Validate checkpoint file for health check endpoint.
+    This is a lighter check that doesn't raise exceptions.
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    checkpoint_path = Path(WAV2LIP_CHECKPOINT)
+    return validate_checkpoint_file(checkpoint_path)
 

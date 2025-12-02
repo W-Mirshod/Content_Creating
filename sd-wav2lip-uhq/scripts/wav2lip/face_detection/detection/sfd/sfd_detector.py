@@ -1,5 +1,6 @@
 import os
 import cv2
+import torch
 from torch.utils.model_zoo import load_url
 import modules.shared as shared
 from ..core import FaceDetector

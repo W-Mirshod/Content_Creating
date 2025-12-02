@@ -27,6 +27,12 @@ WAV2LIP_PADS = list(map(int, os.getenv("WAV2LIP_PADS", "0,30,0,0").split(",")))
 WAV2LIP_RESIZE_FACTOR = int(os.getenv("WAV2LIP_RESIZE_FACTOR", "2"))
 WAV2LIP_FPS = float(os.getenv("WAV2LIP_FPS", "25.0"))
 
+# Wav2Lip performance optimization parameters
+# Batch sizes optimized for CPU (24-core EPYC): can be increased if memory allows
+WAV2LIP_FACE_DET_BATCH_SIZE = int(os.getenv("WAV2LIP_FACE_DET_BATCH_SIZE", "64"))
+WAV2LIP_BATCH_SIZE = int(os.getenv("WAV2LIP_BATCH_SIZE", "256"))
+TORCH_NUM_THREADS = int(os.getenv("TORCH_NUM_THREADS", "24"))
+
 # Wav2Lip UHQ Post-Processing Configuration
 WAV2LIP_UHQ_ENABLED = os.getenv("WAV2LIP_UHQ_ENABLED", "False").lower() == "true"
 WAV2LIP_UHQ_DENOISING_STRENGTH = float(os.getenv("WAV2LIP_UHQ_DENOISING_STRENGTH", "1.0"))
