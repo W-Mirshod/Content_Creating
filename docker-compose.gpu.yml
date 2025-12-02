@@ -27,7 +27,7 @@ services:
       - WAV2LIP_FPS=25.0
       # Wav2Lip UHQ Post-Processing (requires Stable Diffusion API running)
       # Set to True to enable UHQ enhancement with ControlNet
-      - WAV2LIP_UHQ_ENABLED=False
+      - WAV2LIP_UHQ_ENABLED=True
       - WAV2LIP_UHQ_DENOISING_STRENGTH=1.0
       - WAV2LIP_UHQ_MASK_BLUR=8
       # Stable Diffusion API endpoint (must be running with ControlNet extension)
