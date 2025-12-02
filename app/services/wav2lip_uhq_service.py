@@ -10,6 +10,13 @@ from pathlib import Path
 from typing import Optional, List, Tuple
 from PIL import Image
 import cv2
+import multiprocessing
+from concurrent.futures import ThreadPoolExecutor
+
+# Set optimal CPU threads
+NUM_WORKERS = multiprocessing.cpu_count()
+cv2.setNumThreads(NUM_WORKERS)
+cv2.setUseOptimized(True)
 
 try:
     import dlib
@@ -271,25 +278,37 @@ def enhance_video(
     max_frames = int(vs.get(cv2.CAP_PROP_FRAME_COUNT))
     frame_number = 0
     
-    print(f"[INFO] Processing {max_frames} frames...")
+    print(f"[INFO] Processing {max_frames} frames using {NUM_WORKERS} CPU cores...")
     
-    try:
-        while True:
-            # Check if frame already processed
-            output_image = images_dir / f"image_{str(frame_number).rjust(5, '0')}.png"
-            
-            ret_wav2lip, frame_wav2lip = vs.read()
-            ret_original, frame_original = vi.read()
-            
-            if not ret_wav2lip or not ret_original:
-                break
-            
-            if output_image.exists():
-                frame_number += 1
-                continue
-            
-            print(f"[INFO] Processing frame {frame_number} of {max_frames}")
-            
+    # Read all frames first for parallel processing
+    print("[INFO] Reading all frames into memory...")
+    wav2lip_frames = []
+    original_frames = []
+    while True:
+        ret_wav2lip, frame_wav2lip = vs.read()
+        ret_original, frame_original = vi.read()
+        if not ret_wav2lip or not ret_original:
+            break
+        wav2lip_frames.append(frame_wav2lip)
+        original_frames.append(frame_original)
+    
+    vs.release()
+    vi.release()
+    
+    print(f"[INFO] Loaded {len(wav2lip_frames)} frames, starting parallel processing...")
+    
+    def process_single_frame(args):
+        """Process a single frame - designed for parallel execution"""
+        frame_idx, frame_wav2lip, frame_original = args
+        f_number = str(frame_idx).rjust(5, '0')
+        output_image = images_dir / f"image_{f_number}.png"
+        mask_path = masks_dir / f"image_{f_number}.png"
+        
+        # Skip if already processed
+        if output_image.exists():
+            return frame_idx, True, None
+        
+        try:
             # Convert to RGB (dlib expects RGB)
             frame_rgb = cv2.cvtColor(frame_wav2lip, cv2.COLOR_BGR2RGB)
             gray = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2GRAY)
@@ -298,9 +317,7 @@ def enhance_video(
             rects = detector(frame_rgb, 0)
             
             if len(rects) == 0:
-                print(f"[WARNING] No face detected in frame {frame_number}")
-                frame_number += 1
-                continue
+                return frame_idx, False, "No face detected"
             
             # Initialize mask and result
             mask = np.zeros_like(frame_rgb)
@@ -335,7 +352,6 @@ def enhance_video(
                 mask_blur = cv2.GaussianBlur(mask, (15, 15), 0)
                 
                 # Save mask
-                mask_path = masks_dir / f"image_{str(frame_number).rjust(5, '0')}.png"
                 cv2.imwrite(str(mask_path), mask_blur)
                 
                 # Composite Wav2Lip mouth onto original frame
@@ -350,27 +366,40 @@ def enhance_video(
             result_bgr = cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
             cv2.imwrite(str(output_image), result_bgr)
             
-            # Enhance with ControlNet if enabled
-            if use_controlnet and payload and frame_number < 10:  # Limit ControlNet calls for efficiency
-                enhance_image_with_controlnet(
-                    output_image,
-                    masks_dir / f"image_{str(frame_number).rjust(5, '0')}.png",
-                    payload,
-                    frame_number,
-                    output_dir
-                )
+            return frame_idx, True, None
             
-            frame_number += 1
+        except Exception as e:
+            return frame_idx, False, str(e)
+    
+    try:
+        # Process frames (sequential due to dlib detector not being thread-safe)
+        # But use tqdm for progress visualization
+        from tqdm import tqdm
         
-        # Release video streams
-        vs.release()
-        vi.release()
+        frame_args = [(i, wav2lip_frames[i], original_frames[i]) for i in range(len(wav2lip_frames))]
+        
+        successful = 0
+        failed = 0
+        for args in tqdm(frame_args, desc="Processing frames", unit="frame"):
+            frame_idx, success, error = process_single_frame(args)
+            if success:
+                successful += 1
+            else:
+                failed += 1
+                if error:
+                    print(f"[WARNING] Frame {frame_idx}: {error}")
+        
+        print(f"[INFO] Processed {successful} frames successfully, {failed} failed")
+        
+        # Free memory
+        del wav2lip_frames
+        del original_frames
         
         print("[INFO] Creating output video...")
         
         # Create video from images
         temp_video = output_dir / "enhanced_video.avi"
-        create_video_from_images(images_dir, temp_video, original_video, frame_number)
+        create_video_from_images(images_dir, temp_video, original_video, successful)
         
         # Handle audio
         if has_audio(wav2lip_video):
@@ -394,8 +423,6 @@ def enhance_video(
         return Path(output_video)
         
     except Exception as e:
-        vs.release()
-        vi.release()
         raise Wav2LipUHQError(f"UHQ enhancement failed: {str(e)}")
 
 

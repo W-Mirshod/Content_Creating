@@ -65,13 +65,13 @@ def validate_checkpoint_file(checkpoint_path: Path) -> Tuple[bool, Optional[str]
     
     # Try to load the checkpoint to verify it's not corrupted
     try:
-        # Use weights_only=False for compatibility with older checkpoints
-        # but set map_location to avoid loading to GPU unnecessarily
+        # Use weights_only=False for compatibility with PyTorch checkpoints
+        # The warning about TorchScript is just PyTorch being cautious, but this is a regular checkpoint
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if device == 'cuda':
-            torch.load(checkpoint_path, map_location='cpu')
+            torch.load(checkpoint_path, map_location='cpu', weights_only=False)
         else:
-            torch.load(checkpoint_path, map_location=lambda storage, loc: storage)
+            torch.load(checkpoint_path, map_location='cpu', weights_only=False)
     except EOFError:
         return False, (
             f"Checkpoint file is corrupted or incomplete (EOFError). "

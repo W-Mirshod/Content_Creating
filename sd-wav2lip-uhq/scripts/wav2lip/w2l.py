@@ -1,3 +1,6 @@
+# CPU optimization - MUST be imported first before numpy/torch
+import scripts.wav2lip.optimize_cpu
+
 import numpy as np
 import gc
 import cv2, os, scripts.wav2lip.audio as audio
@@ -7,6 +10,11 @@ import torch, scripts.wav2lip.face_detection as face_detection
 from scripts.wav2lip.models import Wav2Lip
 import modules.shared as shared
 from pkg_resources import resource_filename
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+import multiprocessing
+
+# Get number of workers from optimize_cpu module
+NUM_WORKERS = scripts.wav2lip.optimize_cpu.NUM_CORES
 
 
 class W2l:
@@ -21,13 +29,15 @@ class W2l:
         self.audio = audio
         self.checkpoint = checkpoint
         self.mel_step_size = 16
-        self.face_det_batch_size = 16
+        # Increase face detection batch size for better GPU/CPU utilization
+        self.face_det_batch_size = 64  # Increased from 16 for faster face detection
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.pads = [pad_top, pad_bottom, pad_left, pad_right]
         self.face_swap_img = face_swap_img
         self.nosmooth = nosmooth
         self.box = [-1, -1, -1, -1]
-        self.wav2lip_batch_size = 128
+        # Increase wav2lip batch size for faster inference
+        self.wav2lip_batch_size = 256  # Increased from 128 for faster processing
         self.fps = 25
         self.resize_factor = resize_factor
         self.rotate = False
@@ -157,10 +167,37 @@ class W2l:
 
     def _load(self, checkpoint_path):
         shared.cmd_opts.disable_safe_unpickle = True
-        if self.device == 'cuda':
-            checkpoint = torch.load(checkpoint_path)
-        else:
-            checkpoint = torch.load(checkpoint_path, map_location=lambda storage, loc: storage)
+        # Use weights_only=False for compatibility with PyTorch checkpoints
+        # Load to CPU first, will move to GPU later if needed via model.to(device)
+        # PyTorch 2.6+ may auto-dispatch torch.load to torch.jit.load for zip files
+        # We need to force regular checkpoint loading
+        import zipfile
+        import pickle
+        
+        try:
+            # Try to manually load from zip file to prevent auto-dispatch
+            with zipfile.ZipFile(checkpoint_path, 'r') as zf:
+                # Regular PyTorch checkpoints in zip format contain 'data.pkl'
+                if 'data.pkl' in zf.namelist():
+                    with zf.open('data.pkl') as pkl_file:
+                        unpickler = pickle.Unpickler(pkl_file)
+                        unpickler.weights_only = False
+                        checkpoint = unpickler.load()
+                else:
+                    # Fallback to torch.load (may auto-dispatch)
+                    checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
+        except (zipfile.BadZipFile, KeyError):
+            # Not a zip file or different format, use regular torch.load
+            checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
+        
+        # Verify it's a dictionary (not a TorchScript model that was auto-loaded)
+        if not isinstance(checkpoint, dict):
+            raise ValueError(
+                f"Expected checkpoint to be a dictionary with 'state_dict', but got {type(checkpoint)}. "
+                f"PyTorch may have auto-dispatched to torch.jit.load. "
+                f"Please ensure the checkpoint file is a regular PyTorch checkpoint, not a TorchScript model."
+            )
+        
         shared.cmd_opts.disable_safe_unpickle = False
         return checkpoint
 
@@ -189,14 +226,19 @@ class W2l:
             video_stream = cv2.VideoCapture(self.face)
             fps = video_stream.get(cv2.CAP_PROP_FPS)
 
-            print('Reading video frames...')
+            print(f'Reading video frames... (using {NUM_WORKERS} CPU threads)')
 
-            full_frames = []
+            # Read all frames first (I/O bound, sequential)
+            raw_frames = []
             while 1:
                 still_reading, frame = video_stream.read()
                 if not still_reading:
                     video_stream.release()
                     break
+                raw_frames.append(frame)
+            
+            # Process frames in parallel (CPU bound)
+            def process_frame(frame):
                 if self.resize_factor > 1 and self.face_swap_img is None:
                     frame = cv2.resize(frame,
                                        (frame.shape[1] // self.resize_factor, frame.shape[0] // self.resize_factor))
@@ -209,8 +251,14 @@ class W2l:
                 if y2 == -1: y2 = frame.shape[0]
 
                 frame = frame[y1:y2, x1:x2]
-
-                full_frames.append(frame)
+                return frame
+            
+            # Use ThreadPoolExecutor for parallel frame processing
+            with ThreadPoolExecutor(max_workers=NUM_WORKERS) as executor:
+                full_frames = list(tqdm(executor.map(process_frame, raw_frames), 
+                                       total=len(raw_frames), 
+                                       desc="Processing frames"))
+            del raw_frames  # Free memory
 
         print("Number of frames available for inference: " + str(len(full_frames)))
 

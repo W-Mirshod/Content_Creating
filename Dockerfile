@@ -43,17 +43,31 @@ RUN mkdir -p uploads outputs sd-wav2lip-uhq/scripts/wav2lip/temp sd-wav2lip-uhq/
 ENV PYTHONPATH=/app:/app/sd-wav2lip-uhq
 ENV PYTHONUNBUFFERED=1
 
-# CPU threading optimization for multi-core systems (defaults to 24 threads)
-# These can be overridden in docker-compose.yml for your specific CPU
-ENV OMP_NUM_THREADS=24
-ENV MKL_NUM_THREADS=24
-ENV NUMEXPR_NUM_THREADS=24
-ENV TORCH_NUM_THREADS=24
-ENV OPENBLAS_NUM_THREADS=24
+# Create startup script for CPU auto-detection
+RUN echo '#!/bin/bash\n\
+NUM_CORES=$(nproc)\n\
+echo "[STARTUP] Detected $NUM_CORES CPU cores/threads"\n\
+export OMP_NUM_THREADS=$NUM_CORES\n\
+export MKL_NUM_THREADS=$NUM_CORES\n\
+export NUMEXPR_NUM_THREADS=$NUM_CORES\n\
+export TORCH_NUM_THREADS=$NUM_CORES\n\
+export OPENBLAS_NUM_THREADS=$NUM_CORES\n\
+export VECLIB_MAXIMUM_THREADS=$NUM_CORES\n\
+export OMP_DYNAMIC=FALSE\n\
+export OMP_SCHEDULE=STATIC\n\
+export OMP_PROC_BIND=SPREAD\n\
+export OMP_PLACES=threads\n\
+export GOMP_CPU_AFFINITY="0-$((NUM_CORES-1))"\n\
+export MKL_DYNAMIC=FALSE\n\
+export MALLOC_TRIM_THRESHOLD_=128000\n\
+echo "[STARTUP] CPU optimization enabled for $NUM_CORES threads"\n\
+exec "$@"\n\
+' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 # Expose port
 EXPOSE 6070
 
-# Run the application
+# Use entrypoint for CPU auto-detection
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "6070"]
 

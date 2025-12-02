@@ -1,3 +1,6 @@
+# CPU optimization - MUST be imported first before numpy/torch
+import scripts.wav2lip.optimize_cpu
+
 import os
 import numpy as np
 import cv2
@@ -11,6 +14,13 @@ from modules.shared import state, opts
 from pkg_resources import resource_filename
 import modules.face_restoration
 from modules import devices
+from concurrent.futures import ThreadPoolExecutor
+import multiprocessing
+import queue
+import threading
+
+# Get number of workers from optimize_cpu module
+NUM_WORKERS = scripts.wav2lip.optimize_cpu.NUM_CORES
 
 
 class Wav2LipUHQ:
