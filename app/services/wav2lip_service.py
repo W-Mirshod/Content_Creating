@@ -157,12 +157,6 @@ def process_video(
     (WAV2LIP_ROOT / "temp").mkdir(parents=True, exist_ok=True)
     (WAV2LIP_ROOT / "checkpoints").mkdir(parents=True, exist_ok=True)
 
-    # Optimize PyTorch for CPU if no GPU available
-    if not torch.cuda.is_available():
-        torch.set_num_threads(TORCH_NUM_THREADS)
-        torch.set_num_interop_threads(TORCH_NUM_THREADS)
-        print(f"[INFO] Configured PyTorch to use {TORCH_NUM_THREADS} threads for CPU inference")
-
     try:
         # Optimize batch sizes for CPU performance
         # Temporarily patch W2l class to use optimized batch sizes

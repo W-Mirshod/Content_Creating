@@ -43,8 +43,21 @@ cv2.setNumThreads(NUM_CORES)
 cv2.setUseOptimized(True)
 
 # PyTorch threading (for CPU operations)
-torch.set_num_threads(NUM_CORES)
-torch.set_num_interop_threads(min(NUM_CORES, 8))  # Limit inter-op parallelism
+# These must be set before any parallel work starts
+try:
+    torch.set_num_threads(NUM_CORES)
+    print(f"[CPU OPTIMIZATION] PyTorch threads set to {NUM_CORES}")
+except RuntimeError as e:
+    print(f"[CPU OPTIMIZATION] PyTorch threads already configured: {e}")
+
+try:
+    torch.set_num_interop_threads(min(NUM_CORES, 8))  # Limit inter-op parallelism
+    print(f"[CPU OPTIMIZATION] PyTorch interop threads set to {min(NUM_CORES, 8)}")
+except RuntimeError as e:
+    if "cannot set" in str(e).lower():
+        print(f"[CPU OPTIMIZATION] PyTorch interop threads already configured")
+    else:
+        print(f"[CPU OPTIMIZATION] Warning setting interop threads: {e}")
 
 # Enable TF32 for better GPU performance if available
 if torch.cuda.is_available():
