@@ -24,6 +24,9 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy sd-wav2lip-uhq directory (contains Wav2Lip implementation)
+COPY sd-wav2lip-uhq/ ./sd-wav2lip-uhq/
+
 # Copy wav2lip_uhq directory (contains preprocessing tools)
 COPY wav2lip_uhq/ ./wav2lip_uhq/
 
@@ -36,11 +39,8 @@ COPY static/ ./static/
 # Copy documentation
 COPY *.md ./
 
-# Clone Wav2Lip repository
-RUN git clone https://github.com/Rudrabha/Wav2Lip.git Wav2Lip-master || true
-
 # Create necessary directories
-RUN mkdir -p uploads outputs Wav2Lip-master/temp Wav2Lip-master/checkpoints wav2lip_uhq/temp
+RUN mkdir -p uploads outputs sd-wav2lip-uhq/scripts/wav2lip/temp sd-wav2lip-uhq/scripts/wav2lip/checkpoints wav2lip_uhq/temp
 
 # Set environment variables
 ENV PYTHONPATH=/app

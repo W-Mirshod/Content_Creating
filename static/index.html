@@ -288,6 +288,31 @@
             font-size: 0.95em;
         }
 
+        .file-preview {
+            margin-top: 15px;
+            display: none;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .file-preview.active {
+            display: block;
+        }
+
+        .file-preview video,
+        .file-preview audio {
+            width: 100%;
+            display: block;
+            background: #000;
+        }
+
+        .file-preview video {
+            max-height: 400px;
+            object-fit: contain;
+        }
+
         input[type="file"] {
             position: absolute;
             opacity: 0;
@@ -681,6 +706,9 @@
                                 </label>
                             </div>
                             <div class="file-name" id="fileName"></div>
+                            <div class="file-preview" id="videoPreview">
+                                <video id="videoPreviewElement" controls></video>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -692,6 +720,9 @@
                                 </label>
                             </div>
                             <div class="file-name" id="audioFileName"></div>
+                            <div class="file-preview" id="audioPreview">
+                                <audio id="audioPreviewElement" controls></audio>
+                            </div>
                         </div>
 
                         <button type="submit" class="submit-btn" id="submitBtn">
@@ -812,6 +843,10 @@
         const audioFileLabel = document.getElementById('audioFileLabel');
         const fileName = document.getElementById('fileName');
         const audioFileName = document.getElementById('audioFileName');
+        const videoPreview = document.getElementById('videoPreview');
+        const audioPreview = document.getElementById('audioPreview');
+        const videoPreviewElement = document.getElementById('videoPreviewElement');
+        const audioPreviewElement = document.getElementById('audioPreviewElement');
         const submitBtn = document.getElementById('submitBtn');
         const progressContainer = document.getElementById('progressContainer');
         const progressFill = document.getElementById('progressFill');
@@ -829,6 +864,23 @@
                 fileLabel.classList.add('has-file');
                 fileLabel.innerHTML = `<span>✓ ${file.name}</span>`;
                 fileName.textContent = `File: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+                
+                // Create preview
+                const videoUrl = URL.createObjectURL(file);
+                videoPreviewElement.src = videoUrl;
+                videoPreview.classList.add('active');
+                
+                // Clean up previous URL if exists
+                if (videoPreviewElement.dataset.url) {
+                    URL.revokeObjectURL(videoPreviewElement.dataset.url);
+                }
+                videoPreviewElement.dataset.url = videoUrl;
+            } else {
+                videoPreview.classList.remove('active');
+                if (videoPreviewElement.dataset.url) {
+                    URL.revokeObjectURL(videoPreviewElement.dataset.url);
+                    videoPreviewElement.dataset.url = '';
+                }
             }
         });
 
@@ -839,6 +891,23 @@
                 audioFileLabel.classList.add('has-file');
                 audioFileLabel.innerHTML = `<span>✓ ${file.name}</span>`;
                 audioFileName.textContent = `File: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+                
+                // Create preview
+                const audioUrl = URL.createObjectURL(file);
+                audioPreviewElement.src = audioUrl;
+                audioPreview.classList.add('active');
+                
+                // Clean up previous URL if exists
+                if (audioPreviewElement.dataset.url) {
+                    URL.revokeObjectURL(audioPreviewElement.dataset.url);
+                }
+                audioPreviewElement.dataset.url = audioUrl;
+            } else {
+                audioPreview.classList.remove('active');
+                if (audioPreviewElement.dataset.url) {
+                    URL.revokeObjectURL(audioPreviewElement.dataset.url);
+                    audioPreviewElement.dataset.url = '';
+                }
             }
         });
 

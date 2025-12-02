@@ -7,12 +7,12 @@ load_dotenv()
 
 # Base paths
 BASE_DIR = Path(__file__).parent.parent
-WAV2LIP_ROOT = BASE_DIR / "Wav2Lip-master"
+WAV2LIP_SCRIPTS_ROOT = BASE_DIR / "sd-wav2lip-uhq" / "scripts"
+WAV2LIP_ROOT = WAV2LIP_SCRIPTS_ROOT / "wav2lip"
 WAV2LIP_CHECKPOINT = os.getenv(
     "WAV2LIP_CHECKPOINT_PATH",
     str(WAV2LIP_ROOT / "checkpoints" / "wav2lip_gan.pth")
 )
-WAV2LIP_INFERENCE_SCRIPT = WAV2LIP_ROOT / "inference.py"
 WAV2LIP_TEMP_DIR = WAV2LIP_ROOT / "temp"
 
 # File upload configuration

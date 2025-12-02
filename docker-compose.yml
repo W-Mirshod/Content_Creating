@@ -12,15 +12,15 @@ services:
       # Mount static files for live updates
       - ./static:/app/static
       # Mount Wav2Lip checkpoints (if downloaded locally)
-      - ./Wav2Lip-master/checkpoints:/app/Wav2Lip-master/checkpoints
+      - ./sd-wav2lip-uhq/scripts/wav2lip/checkpoints:/app/sd-wav2lip-uhq/scripts/wav2lip/checkpoints
       # Mount uploads and outputs for persistence
       - ./uploads:/app/uploads
       - ./outputs:/app/outputs
       # Mount temp directory
-      - ./Wav2Lip-master/temp:/app/Wav2Lip-master/temp
+      - ./sd-wav2lip-uhq/scripts/wav2lip/temp:/app/sd-wav2lip-uhq/scripts/wav2lip/temp
     environment:
       # Wav2Lip Configuration
-      - WAV2LIP_CHECKPOINT_PATH=/app/Wav2Lip-master/checkpoints/wav2lip_gan.pth
+      - WAV2LIP_CHECKPOINT_PATH=/app/sd-wav2lip-uhq/scripts/wav2lip/checkpoints/wav2lip_gan.pth
       # File Upload Configuration
       - MAX_FILE_SIZE=104857600
       # Wav2Lip Processing Parameters
