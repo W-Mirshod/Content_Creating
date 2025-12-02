@@ -29,8 +29,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install PyTorch with CUDA support
 RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu118
 
-# Copy Wav2Lip project (if it exists)
-COPY Wav2Lip-master/ ./Wav2Lip-master/
+# Copy wav2lip_uhq directory (contains preprocessing tools)
+COPY wav2lip_uhq/ ./wav2lip_uhq/
 
 # Copy application code
 COPY app/ ./app/
@@ -38,8 +38,11 @@ COPY app/ ./app/
 # Copy static files (dashboard)
 COPY static/ ./static/
 
-# Create necessary directories
-RUN mkdir -p uploads outputs Wav2Lip-master/temp Wav2Lip-master/checkpoints
+# Copy documentation
+COPY *.md ./
+
+# Create necessary directories (Wav2Lip-master will be downloaded or mounted)
+RUN mkdir -p uploads outputs Wav2Lip-master/temp Wav2Lip-master/checkpoints wav2lip_uhq/temp
 
 # Set environment variables
 ENV PYTHONPATH=/app

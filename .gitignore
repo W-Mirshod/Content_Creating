@@ -48,7 +48,7 @@ env/
 # Project-specific directories
 uploads/
 outputs/
-Wav2Lip-master/temp/
+Wav2Lip-master/
 wav2lip_uhq/temp/
 app/__pycache__/
 app/services/__pycache__/

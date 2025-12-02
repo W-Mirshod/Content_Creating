@@ -41,12 +41,10 @@ outputs/*
 !outputs/.gitkeep
 
 # Wav2Lip temp files
-Wav2Lip-master/temp/*
-Wav2Lip-master/results/*
+Wav2Lip-master/
 
-# Checkpoints (will be mounted as volume, but don't copy large files)
-Wav2Lip-master/checkpoints/*.pth
-Wav2Lip-master/checkpoints/*.pkl
+# Wav2Lip UHQ temp files
+wav2lip_uhq/temp/
 
 # Other
 *.log

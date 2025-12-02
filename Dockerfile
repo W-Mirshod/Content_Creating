@@ -9,6 +9,10 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     git \
     curl \
+    cmake \
+    build-essential \
+    libopenblas-dev \
+    liblapack-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -20,8 +24,8 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy Wav2Lip project (if it exists)
-COPY Wav2Lip-master/ ./Wav2Lip-master/
+# Copy wav2lip_uhq directory (contains preprocessing tools)
+COPY wav2lip_uhq/ ./wav2lip_uhq/
 
 # Copy application code
 COPY app/ ./app/
@@ -29,8 +33,11 @@ COPY app/ ./app/
 # Copy static files (dashboard)
 COPY static/ ./static/
 
-# Create necessary directories
-RUN mkdir -p uploads outputs Wav2Lip-master/temp Wav2Lip-master/checkpoints
+# Copy documentation
+COPY *.md ./
+
+# Create necessary directories (Wav2Lip-master will be downloaded or mounted)
+RUN mkdir -p uploads outputs Wav2Lip-master/temp Wav2Lip-master/checkpoints wav2lip_uhq/temp
 
 # Set environment variables
 ENV PYTHONPATH=/app
