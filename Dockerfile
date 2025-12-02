@@ -27,9 +27,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy sd-wav2lip-uhq directory (contains Wav2Lip implementation)
 COPY sd-wav2lip-uhq/ ./sd-wav2lip-uhq/
 
-# Copy wav2lip_uhq directory (contains preprocessing tools)
-COPY wav2lip_uhq/ ./wav2lip_uhq/
-
 # Copy application code
 COPY app/ ./app/
 
@@ -43,7 +40,7 @@ COPY *.md ./
 RUN mkdir -p uploads outputs sd-wav2lip-uhq/scripts/wav2lip/temp sd-wav2lip-uhq/scripts/wav2lip/checkpoints wav2lip_uhq/temp
 
 # Set environment variables
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app:/app/sd-wav2lip-uhq
 ENV PYTHONUNBUFFERED=1
 
 # Expose port

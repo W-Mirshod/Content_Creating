@@ -14,15 +14,16 @@ from app.config import (
     WAV2LIP_UHQ_ENABLED,
 )
 
-# Add sd-wav2lip-uhq/scripts to Python path for imports
-if str(WAV2LIP_SCRIPTS_ROOT) not in sys.path:
-    sys.path.insert(0, str(WAV2LIP_SCRIPTS_ROOT))
-
 # Import W2l class from sd-wav2lip-uhq
 try:
+    # Add sd-wav2lip-uhq to Python path for imports
+    sd_wav2lip_root = WAV2LIP_SCRIPTS_ROOT.parent
+    if str(sd_wav2lip_root) not in sys.path:
+        sys.path.insert(0, str(sd_wav2lip_root))
+
     from scripts.wav2lip.w2l import W2l
     W2L_AVAILABLE = True
-except ImportError as e:
+except Exception as e:
     W2L_AVAILABLE = False
     W2L_IMPORT_ERROR = str(e)
 

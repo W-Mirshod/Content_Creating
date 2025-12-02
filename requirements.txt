@@ -33,5 +33,5 @@ insightface==0.7.3
 onnx==1.14.0
 onnxruntime==1.15.0
 onnxruntime-gpu==1.15.0
-ifnude>=0.2.0
+ifnude>=0.0.1
 
