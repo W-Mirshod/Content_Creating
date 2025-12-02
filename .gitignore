@@ -1,2 +1,88 @@
-Wav2Lip-SD-GAN.pt
+# Python
+__pycache__/
+app/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Project-specific directories
+uploads/
 outputs/
+Wav2Lip-master/temp/
+wav2lip_uhq/temp/
+app/__pycache__/
+app/services/__pycache__/
+app/utils/__pycache__/
+
+# Wav2Lip model files (too large)
+Wav2Lip-master/checkpoints/
+*.pth
+*.pt
+Wav2Lip-SD-GAN.pt
+
+# Shape predictor model (dlib)
+wav2lip_uhq/predicator/shape_predictor_68_face_landmarks.dat
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Logs
+*.log
+logs/
+
+# System files
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# Docker
+.dockerignore
+
+# IDE specific
+.editorconfig
+jsconfig.json
+tsconfig.json
