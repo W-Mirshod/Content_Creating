@@ -190,26 +190,32 @@ class W2l:
             # Not a zip file or different format, use regular torch.load
             checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
         
-        # Verify it's a dictionary (not a TorchScript model that was auto-loaded)
-        if not isinstance(checkpoint, dict):
+        # Allow both dictionaries (regular checkpoints) and TorchScript models
+        if not isinstance(checkpoint, (dict, torch.jit.ScriptModule)):
             raise ValueError(
-                f"Expected checkpoint to be a dictionary with 'state_dict', but got {type(checkpoint)}. "
-                f"PyTorch may have auto-dispatched to torch.jit.load. "
-                f"Please ensure the checkpoint file is a regular PyTorch checkpoint, not a TorchScript model."
+                f"Expected checkpoint to be a dictionary or TorchScript model, but got {type(checkpoint)}. "
+                f"Please ensure the checkpoint file is a valid PyTorch checkpoint or TorchScript model."
             )
         
         shared.cmd_opts.disable_safe_unpickle = False
         return checkpoint
 
     def load_model(self, path):
-        model = Wav2Lip()
         print("Load checkpoint from: {}".format(path))
         checkpoint = self._load(path)
-        s = checkpoint["state_dict"]
-        new_s = {}
-        for k, v in s.items():
-            new_s[k.replace('module.', '')] = v
-        model.load_state_dict(new_s)
+
+        # Check if it's a TorchScript model or regular PyTorch checkpoint
+        if isinstance(checkpoint, torch.jit.ScriptModule):
+            print("Detected TorchScript model, using directly")
+            model = checkpoint
+        else:
+            print("Detected PyTorch checkpoint, loading state_dict")
+            model = Wav2Lip()
+            s = checkpoint["state_dict"]
+            new_s = {}
+            for k, v in s.items():
+                new_s[k.replace('module.', '')] = v
+            model.load_state_dict(new_s)
 
         model = model.to(self.device)
         return model.eval()

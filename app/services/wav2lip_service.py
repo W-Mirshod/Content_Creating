@@ -65,13 +65,31 @@ def validate_checkpoint_file(checkpoint_path: Path) -> Tuple[bool, Optional[str]
     
     # Try to load the checkpoint to verify it's not corrupted
     try:
-        # Use weights_only=False for compatibility with PyTorch checkpoints
-        # The warning about TorchScript is just PyTorch being cautious, but this is a regular checkpoint
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        if device == 'cuda':
-            torch.load(checkpoint_path, map_location='cpu', weights_only=False)
-        else:
-            torch.load(checkpoint_path, map_location='cpu', weights_only=False)
+        import zipfile
+        import pickle
+
+        try:
+            # Try to manually load from zip file to prevent auto-dispatch
+            with zipfile.ZipFile(checkpoint_path, 'r') as zf:
+                # Regular PyTorch checkpoints in zip format contain 'data.pkl'
+                if 'data.pkl' in zf.namelist():
+                    with zf.open('data.pkl') as pkl_file:
+                        unpickler = pickle.Unpickler(pkl_file)
+                        unpickler.weights_only = False
+                        checkpoint = unpickler.load()
+                else:
+                    # Fallback to torch.load (may auto-dispatch)
+                    checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
+        except (zipfile.BadZipFile, KeyError):
+            # Not a zip file or different format, use regular torch.load
+            checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
+
+        # Allow both dictionaries (regular checkpoints) and TorchScript models
+        if not isinstance(checkpoint, (dict, torch.jit.ScriptModule)):
+            return False, (
+                f"Expected checkpoint to be a dictionary or TorchScript model, but got {type(checkpoint)}. "
+                f"The checkpoint file appears to be corrupted or in an unsupported format."
+            )
     except EOFError:
         return False, (
             f"Checkpoint file is corrupted or incomplete (EOFError). "
