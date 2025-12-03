@@ -2,6 +2,7 @@ import subprocess
 import sys
 import traceback
 import torch
+import shutil
 from pathlib import Path
 from typing import Optional, List, Tuple
 
@@ -213,7 +214,8 @@ def process_video(
             )
 
         # Move the result to the desired output path
-        default_output.rename(output_path)
+        # Use shutil.move instead of rename to handle cross-device moves
+        shutil.move(str(default_output), str(output_path))
 
         # Apply UHQ post-processing if enabled
         if uhq_enabled:
@@ -231,7 +233,7 @@ def process_video(
 
                 # Replace original with enhanced version
                 output_path.unlink()
-                enhanced_video.rename(output_path)
+                shutil.move(str(enhanced_video), str(output_path))
 
                 # Cleanup enhancement cache
                 cleanup_enhancement_cache(uhq_output.parent)
@@ -320,4 +322,4 @@ def validate_checkpoint_in_setup() -> Tuple[bool, Optional[str]]:
     """
     checkpoint_path = Path(WAV2LIP_CHECKPOINT)
     return validate_checkpoint_file(checkpoint_path)
-
+    
