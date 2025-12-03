@@ -1,6 +1,5 @@
 FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
     python3.10 \
     python3-pip \
@@ -13,49 +12,35 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Set Python 3.10 as default
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
 RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
 
-# Set working directory
 WORKDIR /app
 
-# Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install PyTorch with CUDA support
 RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu118
 
-# Copy wav2lip_uhq directory (contains preprocessing tools)
 COPY wav2lip_uhq/ ./wav2lip_uhq/
 
-# Copy application code
 COPY app/ ./app/
 
-# Copy static files (dashboard)
 COPY static/ ./static/
 
-# Copy documentation
 COPY *.md ./
 
-# Clone Wav2Lip repository
 RUN git clone https://github.com/Rudrabha/Wav2Lip.git Wav2Lip-master || true
 
-# Create necessary directories
 RUN mkdir -p uploads outputs Wav2Lip-master/temp Wav2Lip-master/checkpoints wav2lip_uhq/temp
 
-# Set environment variables
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
-# Expose port
 EXPOSE 8000
 
-# Run the application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 

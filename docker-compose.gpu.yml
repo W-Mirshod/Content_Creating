@@ -9,33 +9,21 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Mount Wav2Lip checkpoints (if downloaded locally)
       - ./sd-wav2lip-uhq/scripts/wav2lip/checkpoints:/app/sd-wav2lip-uhq/scripts/wav2lip/checkpoints
-      # Mount uploads and outputs for persistence
       - ./uploads:/app/uploads
       - ./outputs:/app/outputs
-      # Mount temp directory
       - ./sd-wav2lip-uhq/scripts/wav2lip/temp:/app/sd-wav2lip-uhq/scripts/wav2lip/temp
     environment:
-      # Wav2Lip Configuration
       - WAV2LIP_CHECKPOINT_PATH=/app/sd-wav2lip-uhq/scripts/wav2lip/checkpoints/wav2lip_gan.pth
-      # File Upload Configuration
       - MAX_FILE_SIZE=104857600
-      # Wav2Lip Processing Parameters
       - WAV2LIP_PADS=0,30,0,0
       - WAV2LIP_RESIZE_FACTOR=2
       - WAV2LIP_FPS=25.0
-      # Note: CPU threading optimizations are automatically disabled when GPU is available
-      # The code will use GPU-optimized settings when CUDA is detected
-      # Wav2Lip UHQ Post-Processing (requires Stable Diffusion API running)
-      # Set to True to enable UHQ enhancement with ControlNet
       - WAV2LIP_UHQ_ENABLED=True
       - WAV2LIP_UHQ_DENOISING_STRENGTH=1.0
       - WAV2LIP_UHQ_MASK_BLUR=8
-      # Stable Diffusion API endpoint (must be running with ControlNet extension)
       - STABLE_DIFFUSION_API_URL=http://localhost:7860
       - NVIDIA_VISIBLE_DEVICES=all
-    # GPU support (requires nvidia-docker and nvidia-container-toolkit)
     deploy:
       resources:
         reservations:
